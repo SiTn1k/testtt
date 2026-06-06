@@ -725,33 +725,64 @@ function SupportScreen({ lang, telegramUser, dbUser, onDonated }: any) {
     successAmountRef.current = amount;
 
     try {
-      // Real Telegram Stars flow using openInvoice with Stars
       if (window.Telegram?.WebApp) {
         const WebApp = window.Telegram.WebApp;
 
-        // Telegram Stars: we use openInvoice with the invoice slug format
-        // The format is: $<bot_username>_<payment_id>
-        // For a simpler approach, we use the WebApp's built-in Stars payment:
-        // window.Telegram.WebApp.openInvoice(url, callback)
-        // But since we need the bot to create the invoice first via Bot API,
-        // we'll record the donation directly (the Stars are charged by the platform)
-        await museumAPI.createDonation(dbUser.id, amount, "XTR", "telegram_stars");
-        await refreshGlobalStats();
-        onDonated();
-        setIsSuccess(true);
-        setTimeout(() => setIsSuccess(false), 4000);
+        // Create invoice via edge function
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+        const invoiceRes = await fetch(`${supabaseUrl}/functions/v1/stars-invoice`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${supabaseKey}`,
+            apikey: supabaseKey,
+          },
+          body: JSON.stringify({
+            title: lang === "ua" ? "Донат музею" : "Museum Donation",
+            description: lang === "ua"
+              ? `Підтримка музею — ${amount} Stars`
+              : `Support the museum — ${amount} Stars`,
+            prices: [{ label: "Donation", amount }],
+            payload: `donation_${dbUser.id}_${Date.now()}`,
+          }),
+        });
 
-        // Haptic feedback
-        if (WebApp.HapticFeedback) {
-          WebApp.HapticFeedback.notificationOccurred("success");
+        if (!invoiceRes.ok) {
+          console.error("Invoice creation failed");
+          setIsProcessing(false);
+          return;
         }
+
+        const { invoice_link, error: invError } = await invoiceRes.json();
+        if (invError || !invoice_link) {
+          console.error("No invoice link:", invError);
+          setIsProcessing(false);
+          return;
+        }
+
+        // Open the Stars payment dialog
+        WebApp.openInvoice(invoice_link, async (status: string) => {
+          if (status === "paid") {
+            await museumAPI.createDonation(dbUser.id, amount, "XTR", "telegram_stars");
+            await refreshGlobalStats();
+            onDonated();
+            setIsSuccess(true);
+            setTimeout(() => setIsSuccess(false), 4000);
+            if (WebApp.HapticFeedback) {
+              WebApp.HapticFeedback.notificationOccurred("success");
+            }
+          }
+          setIsProcessing(false);
+        });
       } else {
-        // Testing outside Telegram - record as completed
+        // Outside Telegram — test mode
         await museumAPI.createDonation(dbUser.id, amount, "XTR", "telegram_stars");
         await refreshGlobalStats();
         onDonated();
         setIsSuccess(true);
         setTimeout(() => setIsSuccess(false), 4000);
+        setIsProcessing(false);
       }
     } catch (err) {
       console.error("Stars payment failed:", err);
@@ -946,6 +977,12 @@ function TapScreen({ lang, dbUser, stats, onRefresh }: any) {
   const [isBuyingBoost, setIsBuyingBoost] = useState(false);
   const [upgradeMsg, setUpgradeMsg] = useState("");
   const tapIdRef = useRef(0);
+  const [localXP, setLocalXP] = useState(stats?.totalXP || 0);
+
+  // Keep localXP in sync with stats prop
+  useEffect(() => {
+    if (stats?.totalXP !== undefined) setLocalXP(stats.totalXP);
+  }, [stats?.totalXP]);
 
   // Load tap state
   useEffect(() => {
@@ -965,13 +1002,15 @@ function TapScreen({ lang, dbUser, stats, onRefresh }: any) {
     load();
   }, [dbUser]);
 
-  // Refresh tap state periodically to check boost expiry
+  // Refresh tap state periodically to check boost expiry + sync XP
   useEffect(() => {
     if (!dbUser || !tapState) return;
     const interval = setInterval(async () => {
       const state = await museumAPI.getTapState(dbUser.id);
       if (state) setTapState(state);
-    }, 10000);
+      // Sync real XP from DB every 5s
+      onRefresh();
+    }, 5000);
     return () => clearInterval(interval);
   }, [dbUser, tapState]);
 
@@ -1005,6 +1044,8 @@ function TapScreen({ lang, dbUser, stats, onRefresh }: any) {
     const y = 10 + Math.random() * 20;
     setFloatingXPs(prev => [...prev, { id, x: x + "%", y, value: `+${xpPerTap} XP` }]);
     setTaps(prev => prev + 1);
+    // Optimistically add XP to local counter
+    setLocalXP(prev => prev + xpPerTap);
 
     // Haptic
     if (window.Telegram?.WebApp?.HapticFeedback) {
@@ -1049,17 +1090,70 @@ function TapScreen({ lang, dbUser, stats, onRefresh }: any) {
     setIsBuyingBoost(true);
 
     try {
-      // Pay with Stars first
-      await museumAPI.createDonation(dbUser.id, BOOST_COST_STARS, "XTR", "telegram_stars_boost");
-      // Then activate boost
-      const result = await museumAPI.buyBoost(dbUser.id);
-      if (result.success) {
-        setTapState(prev => prev ? { ...prev, x2_boost_until: result.boostUntil } : prev);
-        onRefresh();
+      if (window.Telegram?.WebApp) {
+        const WebApp = window.Telegram.WebApp;
+
+        // Create invoice via edge function to get a real invoice link
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+        const invoiceRes = await fetch(`${supabaseUrl}/functions/v1/stars-invoice`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${supabaseKey}`,
+            apikey: supabaseKey,
+          },
+          body: JSON.stringify({
+            title: lang === "ua" ? "x2 Буст Тапалки" : "Tap x2 Boost",
+            description: lang === "ua"
+              ? `${BOOST_DURATION_MIN} хвилин подвійного XP за тапи`
+              : `${BOOST_DURATION_MIN} minutes of double XP per tap`,
+            prices: [{ label: "x2 Boost", amount: BOOST_COST_STARS }],
+            payload: `boost_${dbUser.id}_${Date.now()}`,
+          }),
+        });
+
+        if (!invoiceRes.ok) {
+          const errData = await invoiceRes.json().catch(() => ({}));
+          console.error("Invoice creation failed:", errData);
+          setIsBuyingBoost(false);
+          return;
+        }
+
+        const { invoice_link, error: invError } = await invoiceRes.json();
+        if (invError || !invoice_link) {
+          console.error("No invoice link:", invError);
+          setIsBuyingBoost(false);
+          return;
+        }
+
+        // Open the invoice — Telegram shows Stars payment dialog
+        WebApp.openInvoice(invoice_link, async (status: string) => {
+          if (status === "paid") {
+            // Stars charged — activate boost + record donation
+            const result = await museumAPI.buyBoost(dbUser.id);
+            if (result.success) {
+              setTapState(prev => prev ? { ...prev, x2_boost_until: result.boostUntil } : prev);
+              await museumAPI.createDonation(dbUser.id, BOOST_COST_STARS, "XTR", "telegram_stars_boost");
+              onRefresh();
+              if (WebApp.HapticFeedback) {
+                WebApp.HapticFeedback.notificationOccurred("success");
+              }
+            }
+          }
+          setIsBuyingBoost(false);
+        });
+      } else {
+        // Outside Telegram — test mode
+        const result = await museumAPI.buyBoost(dbUser.id);
+        if (result.success) {
+          setTapState(prev => prev ? { ...prev, x2_boost_until: result.boostUntil } : prev);
+          onRefresh();
+        }
+        setIsBuyingBoost(false);
       }
     } catch (err) {
       console.error("Buy boost error:", err);
-    } finally {
       setIsBuyingBoost(false);
     }
   };
@@ -1091,7 +1185,7 @@ function TapScreen({ lang, dbUser, stats, onRefresh }: any) {
         </GlassCard>
         <GlassCard className="p-3 text-center" hover={false}>
           <Star className="w-4 h-4 text-[#ffd700]/60 mx-auto mb-1" />
-          <div className="text-lg font-bold text-white">{stats?.totalXP || 0}</div>
+          <div className="text-lg font-bold text-white">{Math.floor(localXP)}</div>
           <div className="text-[9px] text-white/40">XP</div>
         </GlassCard>
       </div>
