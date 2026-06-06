@@ -3,6 +3,10 @@ import { createClient } from "@supabase/supabase-js";
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
+if (!supabaseUrl || !supabaseKey) {
+  console.error("Missing Supabase env vars. VITE_SUPABASE_URL:", supabaseUrl, "VITE_SUPABASE_ANON_KEY:", supabaseKey ? "present" : "MISSING");
+}
+
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 export interface UserProfile {
@@ -17,6 +21,23 @@ export interface UserProfile {
   created_at: string;
   last_visit: string;
 }
+
+export interface TapGameState {
+  id: number;
+  user_id: number;
+  tap_level: number;
+  total_taps: number;
+  x2_boost_until: string | null;
+}
+
+export const TAP_LEVELS = [
+  { level: 1, xpPerTap: 0.5, upgradeCostXP: 100, label: { ua: "Рівень 1", en: "Level 1" } },
+  { level: 2, xpPerTap: 1.0, upgradeCostXP: 500, label: { ua: "Рівень 2", en: "Level 2" } },
+  { level: 3, xpPerTap: 1.5, upgradeCostXP: null, label: { ua: "Рівень 3 (Макс)", en: "Level 3 (Max)" } },
+];
+
+export const BOOST_COST_STARS = 25;
+export const BOOST_DURATION_MIN = 15;
 
 export interface UserStats {
   totalMinutes: number;
@@ -62,11 +83,16 @@ export class MuseumAPI {
     language_code?: string;
     photo_url?: string;
   }): Promise<UserProfile> {
-    const { data: existing } = await supabase
+    // Try to find existing user
+    const { data: existing, error: findError } = await supabase
       .from("users")
       .select("*")
       .eq("telegram_id", telegramUser.id)
       .maybeSingle();
+
+    if (findError) {
+      console.error("Find user error:", findError.message, findError.details);
+    }
 
     if (existing) {
       const { data, error } = await supabase
@@ -75,34 +101,31 @@ export class MuseumAPI {
         .eq("id", existing.id)
         .select()
         .single();
-      if (error) console.error("Update user error:", error);
+      if (error) console.error("Update user error:", error.message);
       return data || existing;
     }
 
+    // Create new user
     const { data, error } = await supabase
       .from("users")
-      .insert([
-        {
-          telegram_id: telegramUser.id,
-          first_name: telegramUser.first_name,
-          last_name: telegramUser.last_name || null,
-          username: telegramUser.username || null,
-          language_code: telegramUser.language_code || "en",
-          photo_url: telegramUser.photo_url || null,
-          total_xp: 0,
-        },
-      ])
+      .insert([{
+        telegram_id: telegramUser.id,
+        first_name: telegramUser.first_name,
+        last_name: telegramUser.last_name || null,
+        username: telegramUser.username || null,
+        language_code: telegramUser.language_code || "en",
+        photo_url: telegramUser.photo_url || null,
+        total_xp: 0,
+      }])
       .select()
       .single();
 
     if (error) {
-      console.error("Create user error:", error);
+      console.error("Create user error:", error.message, error.details, error.hint);
       throw error;
     }
 
-    // Award FIRST_VISIT achievement
     await this.awardAchievement(data.id, "FIRST_VISIT");
-
     return data;
   }
 
@@ -278,24 +301,13 @@ export class MuseumAPI {
     paymentMethod: string = "telegram_stars",
     transactionId?: string
   ): Promise<void> {
-    const txId = transactionId || `${paymentMethod}_${userId}_${Date.now()}`;
-
-    // Check if already recorded (prevent duplicates from retries)
-    const { data: existing } = await supabase
-      .from("donations")
-      .select("id")
-      .eq("transaction_id", txId)
-      .maybeSingle();
-
-    if (existing) return;
-
     const { error } = await supabase.from("donations").insert([
       {
         user_id: userId,
         amount,
         currency,
         payment_method: paymentMethod,
-        transaction_id: txId,
+        transaction_id: transactionId || `stars_${Date.now()}`,
         status: "completed",
       },
     ]);
@@ -354,6 +366,119 @@ export class MuseumAPI {
     return data || [];
   }
 
+  // ── Tap Game ──────────────────────────────────────────────────────────────
+
+  async getTapState(userId: number): Promise<TapGameState | null> {
+    const { data, error } = await supabase
+      .from("tap_game_state")
+      .select("*")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (error) {
+      console.error("Get tap state error:", error.message);
+      return null;
+    }
+    return data;
+  }
+
+  async initTapState(userId: number): Promise<TapGameState> {
+    const { data: existing } = await supabase
+      .from("tap_game_state")
+      .select("*")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (existing) return existing;
+
+    const { data, error } = await supabase
+      .from("tap_game_state")
+      .insert([{ user_id: userId, tap_level: 1, total_taps: 0 }])
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Init tap state error:", error.message);
+      throw error;
+    }
+    return data;
+  }
+
+  async recordTap(userId: number): Promise<{ xpEarned: number; totalTaps: number; tapLevel: number; x2Active: boolean }> {
+    const state = await this.getTapState(userId);
+    if (!state) throw new Error("Tap state not found. Call initTapState first.");
+
+    const levelConfig = TAP_LEVELS.find(l => l.level === state.tap_level) || TAP_LEVELS[0];
+    let xpEarned = levelConfig.xpPerTap;
+
+    // Check if x2 boost is active
+    const x2Active = state.x2_boost_until && new Date(state.x2_boost_until) > new Date();
+    if (x2Active) xpEarned *= 2;
+
+    // Add XP
+    await this.addXP(userId, xpEarned);
+
+    // Increment total_taps
+    const newTaps = (state.total_taps || 0) + 1;
+    await supabase
+      .from("tap_game_state")
+      .update({ total_taps: newTaps, updated_at: new Date().toISOString() })
+      .eq("user_id", userId);
+
+    return { xpEarned, totalTaps: newTaps, tapLevel: state.tap_level, x2Active: !!x2Active };
+  }
+
+  async upgradeTapLevel(userId: number): Promise<{ success: boolean; newLevel: number; xpSpent: number }> {
+    const state = await this.getTapState(userId);
+    if (!state) throw new Error("Tap state not found");
+
+    if (state.tap_level >= 3) return { success: false, newLevel: 3, xpSpent: 0 };
+
+    const nextLevel = state.tap_level + 1;
+    const nextConfig = TAP_LEVELS.find(l => l.level === nextLevel);
+    if (!nextConfig || !nextConfig.upgradeCostXP) return { success: false, newLevel: state.tap_level, xpSpent: 0 };
+
+    // Check if user has enough XP
+    const { data: user } = await supabase
+      .from("users")
+      .select("total_xp")
+      .eq("id", userId)
+      .maybeSingle();
+
+    const currentXP = user?.total_xp || 0;
+    if (currentXP < nextConfig.upgradeCostXP) return { success: false, newLevel: state.tap_level, xpSpent: 0 };
+
+    // Spend XP and upgrade level
+    await supabase
+      .from("users")
+      .update({ total_xp: currentXP - nextConfig.upgradeCostXP })
+      .eq("id", userId);
+
+    await supabase
+      .from("tap_game_state")
+      .update({ tap_level: nextLevel, updated_at: new Date().toISOString() })
+      .eq("user_id", userId);
+
+    return { success: true, newLevel: nextLevel, xpSpent: nextConfig.upgradeCostXP };
+  }
+
+  async buyBoost(userId: number): Promise<{ success: boolean; boostUntil: string | null }> {
+    // This should be called AFTER the Stars payment is confirmed
+    const boostUntil = new Date(Date.now() + BOOST_DURATION_MIN * 60 * 1000).toISOString();
+
+    const { error } = await supabase
+      .from("tap_game_state")
+      .update({ x2_boost_until: boostUntil, updated_at: new Date().toISOString() })
+      .eq("user_id", userId);
+
+    if (error) {
+      console.error("Buy boost error:", error.message);
+      return { success: false, boostUntil: null };
+    }
+
+    return { success: true, boostUntil };
+  }
+
   // ── XP ─────────────────────────────────────────────────────────────────────
 
   private async addXP(userId: number, xpToAdd: number): Promise<void> {
@@ -371,7 +496,7 @@ export class MuseumAPI {
       .eq("id", userId);
   }
 
-    // ── Achievements ───────────────────────────────────────────────────────────
+  // ── Achievements ───────────────────────────────────────────────────────────
 
   private async awardAchievement(userId: number, key: string): Promise<void> {
     const { data: existing } = await supabase
@@ -388,40 +513,6 @@ export class MuseumAPI {
       .insert([{ user_id: userId, achievement_key: key }]);
 
     if (error) console.error("Award achievement error:", error);
-  }
-
-  async createStarsInvoice(
-    userId: number,
-    amount: number
-  ) {
-    console.log("[Stars] Creating invoice:", { userId, amount });
-    const response = await fetch(
-      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stars`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "apikey": import.meta.env.VITE_SUPABASE_ANON_KEY,
-          "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-        },
-        body: JSON.stringify({
-          userId,
-          amount,
-        }),
-      }
-    );
-
-    const data = await response.json();
-    console.log("[Stars] Response status:", response.status, "Data:", data);
-
-    if (!response.ok) {
-      console.error("[Stars] Error response:", data);
-      throw new Error(
-        data.error || "Failed to create Stars invoice"
-      );
-    }
-
-    return data;
   }
 }
 
