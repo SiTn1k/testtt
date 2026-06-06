@@ -31,9 +31,9 @@ export interface TapGameState {
 }
 
 export const TAP_LEVELS = [
-  { level: 1, xpPerTap: 0.5, upgradeCostXP: 100, label: { ua: "Рівень 1", en: "Level 1" } },
-  { level: 2, xpPerTap: 1.0, upgradeCostXP: 500, label: { ua: "Рівень 2", en: "Level 2" } },
-  { level: 3, xpPerTap: 1.5, upgradeCostXP: null, label: { ua: "Рівень 3 (Макс)", en: "Level 3 (Max)" } },
+  { level: 1, xpPerTap: 1, upgradeCostXP: 100, label: { ua: "Рівень 1", en: "Level 1" } },
+  { level: 2, xpPerTap: 2, upgradeCostXP: 500, label: { ua: "Рівень 2", en: "Level 2" } },
+  { level: 3, xpPerTap: 3, upgradeCostXP: 2000, label: { ua: "Рівень 3 (Макс)", en: "Level 3 (Max)" } },
 ];
 
 export const BOOST_COST_STARS = 25;
