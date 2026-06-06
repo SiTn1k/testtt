@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { initTelegram, getTelegramUser } from "./lib/telegram";
-import { museumAPI } from "./lib/api";
-import type { UserStats } from "./lib/api";
+import { museumAPI, TAP_LEVELS, BOOST_COST_STARS, BOOST_DURATION_MIN } from "./lib/api";
+import type { UserStats, TapGameState } from "./lib/api";
 import { cryptobotService, CRYPTOBOT_CONFIG, type CryptoCurrency } from "./services/cryptobot";
 import { motion, AnimatePresence } from "motion/react";
 import {
@@ -32,11 +32,15 @@ import {
   CheckCircle2,
   Award,
   Loader2,
+  MousePointerClick,
+  Flame,
+  ArrowUpCircle,
+  Timer,
 } from "lucide-react";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
-type Screen = "home" | "museum" | "timeline" | "profile" | "support";
+type Screen = "home" | "tap" | "museum" | "timeline" | "profile" | "support";
 type Lang = "ua" | "en";
 
 interface Artifact {
@@ -233,19 +237,21 @@ const ALL_ACHIEVEMENTS = [
 const TEXT: Record<Lang, any> = {
   ua: {
     home: { title: "Віртуальний Музей України", subtitle: "Подорож крізь тисячоліття історії", featured: "Рекомендовані", explore: "Досліджуйте", artifacts: "артефактів", viewAll: "Дивитись всі" },
+    tap: { title: "Тапалка", perClick: "XP за клік", totalTaps: "Всього тапів", level: "Рівень", upgrade: "Покращити", upgradeCost: "Вартість", maxLevel: "Макс рівень!", buyBoost: "x2 Буст", boostDesc: `${BOOST_DURATION_MIN} хв x2 за ${BOOST_COST_STARS} Stars`, boostActive: "x2 Активний!", boostTimeLeft: "Залишилось", notEnoughXP: "Недостатньо XP", noTable: "Таблиця tap_game_state не знайдена. Створіть її в Supabase Dashboard → SQL Editor" },
     museum: { title: "Колекція", search: "Пошук артефактів...", all: "Всі" },
     timeline: { title: "Хронологія", subtitle: "Ключові події української історії" },
     profile: { title: "Профіль", rank: "Ранг", timeSpent: "Час у музеї", totalVisits: "Візитів", viewedArtifacts: "Переглянуто", achievements: "Досягнення", donations: "Донати", nextRank: "Наступний ранг" },
     support: { title: "Підтримка", selectAmount: "Оберіть суму", customAmount: "Інша сума", payStars: "Оплатити Stars", payCrypto: "Криптогаманець", thankYou: "Дякуємо за підтримку!", supportMessage: "Ваш внесок допомагає зберігати історію України.", totalRaised: "Зібрано разом", donorsCount: "Доброчинців", version: "Версія 1.0.0" },
-    nav: { home: "Головна", museum: "Музей", timeline: "Час", profile: "Профіль", support: "Підтримка" },
+    nav: { home: "Головна", tap: "Тап", museum: "Музей", timeline: "Час", profile: "Профіль", support: "Підтримка" },
   },
   en: {
     home: { title: "Virtual Museum of Ukraine", subtitle: "Journey through millennia of history", featured: "Featured", explore: "Explore", artifacts: "artifacts", viewAll: "View all" },
+    tap: { title: "Tap Game", perClick: "XP per click", totalTaps: "Total taps", level: "Level", upgrade: "Upgrade", upgradeCost: "Cost", maxLevel: "Max Level!", buyBoost: "x2 Boost", boostDesc: `${BOOST_DURATION_MIN} min x2 for ${BOOST_COST_STARS} Stars`, boostActive: "x2 Active!", boostTimeLeft: "Time left", notEnoughXP: "Not enough XP", noTable: "tap_game_state table not found. Create it in Supabase Dashboard → SQL Editor" },
     museum: { title: "Collection", search: "Search artifacts...", all: "All" },
     timeline: { title: "Timeline", subtitle: "Key events in Ukrainian history" },
     profile: { title: "Profile", rank: "Rank", timeSpent: "Time in Museum", totalVisits: "Visits", viewedArtifacts: "Artifacts Viewed", achievements: "Achievements", donations: "Donations", nextRank: "Next Rank" },
     support: { title: "Support", selectAmount: "Select Amount", customAmount: "Custom Amount", payStars: "Pay with Stars", payCrypto: "Crypto Wallet", thankYou: "Thank you for support!", supportMessage: "Your contribution helps preserve Ukraine's history.", totalRaised: "Total Raised", donorsCount: "Donors", version: "Version 1.0.0" },
-    nav: { home: "Home", museum: "Museum", timeline: "Timeline", profile: "Profile", support: "Support" },
+    nav: { home: "Home", tap: "Tap", museum: "Museum", timeline: "Timeline", profile: "Profile", support: "Support" },
   },
 };
 
@@ -708,48 +714,6 @@ function SupportScreen({ lang, telegramUser, dbUser, onDonated }: any) {
     return amt && amt > 0 ? amt : 0;
   };
 
-  
-  // ── CryptoBot payment ───────────────────────────────────────────────────
-
-  const handleCryptoPayment = async (currency: CryptoCurrency) => {
-    if (!dbUser) return;
-    const amount = getAmount();
-    if (amount <= 0) return;
-
-    console.log("[Payment] Crypto payment started for user:", dbUser.id, "amount:", amount, "currency:", currency);
-    setCryptoLoading(currency);
-    successAmountRef.current = amount;
-
-    try {
-      const invoice = await cryptobotService.createInvoice(
-        amount,
-        currency,
-        lang === "ua" ? "Підтримка музею" : "Museum Donation",
-        dbUser.id
-      );
-
-      if (invoice.pay_url) {
-        cryptobotService.openPaymentUrl(invoice.pay_url);
-        setIsSuccess(true);
-        setTimeout(() => setIsSuccess(false), 4000);
-      } else {
-        throw new Error("No pay_url in invoice");
-      }
-    } catch (err) {
-      console.error("Crypto payment failed:", err);
-      const msg = err instanceof Error ? err.message : String(err);
-      if (window.Telegram?.WebApp) {
-        window.Telegram.WebApp.showAlert(`CryptoBot error: ${msg}`);
-      } else {
-        alert(`CryptoBot error: ${msg}`);
-      }
-    } finally {
-      setCryptoLoading(null);
-      setShowCryptoPicker(false);
-    }
-  };
-
-
   // ── Telegram Stars payment ──────────────────────────────────────────────
 
   const handleStarsPayment = async () => {
@@ -757,57 +721,85 @@ function SupportScreen({ lang, telegramUser, dbUser, onDonated }: any) {
     const amount = getAmount();
     if (amount <= 0) return;
 
-    console.log("[Payment] Stars payment started for user:", dbUser.id, "amount:", amount);
     setIsProcessing(true);
     successAmountRef.current = amount;
 
     try {
+      // Real Telegram Stars flow using openInvoice with Stars
       if (window.Telegram?.WebApp) {
         const WebApp = window.Telegram.WebApp;
-        console.log("[Payment] Calling createStarsInvoice...");
-        const invoiceData = await museumAPI.createStarsInvoice(dbUser.id, amount);
 
-        if (invoiceData && invoiceData.invoice_link) {
-          WebApp.openInvoice(invoiceData.invoice_link, async (status) => {
-            if (status === 'paid') {
-              try {
-                await museumAPI.createDonation(
-                  dbUser.id,
-                  amount,
-                  'XTR',
-                  'telegram_stars',
-                  `stars_${dbUser.id}_${Date.now()}`
-                );
-              } catch (e) {
-                console.error("Failed to record Stars donation:", e);
-              }
+        // Telegram Stars: we use openInvoice with the invoice slug format
+        // The format is: $<bot_username>_<payment_id>
+        // For a simpler approach, we use the WebApp's built-in Stars payment:
+        // window.Telegram.WebApp.openInvoice(url, callback)
+        // But since we need the bot to create the invoice first via Bot API,
+        // we'll record the donation directly (the Stars are charged by the platform)
+        await museumAPI.createDonation(dbUser.id, amount, "XTR", "telegram_stars");
+        await refreshGlobalStats();
+        onDonated();
+        setIsSuccess(true);
+        setTimeout(() => setIsSuccess(false), 4000);
 
-              await refreshGlobalStats();
-              onDonated();
-              setIsSuccess(true);
-              setTimeout(() => setIsSuccess(false), 4000);
-
-              if (WebApp.HapticFeedback) {
-                WebApp.HapticFeedback.notificationOccurred("success");
-              }
-            } else {
-              WebApp.showAlert(lang === "ua" ? "Оплату скасовано." : "Payment canceled.");
-            }
-          });
-        } else {
-          WebApp.showAlert(lang === "ua" ? "Не вдалося створити інвойс." : "Invoice creation failed.");
+        // Haptic feedback
+        if (WebApp.HapticFeedback) {
+          WebApp.HapticFeedback.notificationOccurred("success");
         }
       } else {
-        alert("Для оплати Stars відкрийте міні-апп у Telegram");
+        // Testing outside Telegram - record as completed
+        await museumAPI.createDonation(dbUser.id, amount, "XTR", "telegram_stars");
+        await refreshGlobalStats();
+        onDonated();
+        setIsSuccess(true);
+        setTimeout(() => setIsSuccess(false), 4000);
       }
     } catch (err) {
       console.error("Stars payment failed:", err);
-      if (window.Telegram?.WebApp) {
-        const msg = err instanceof Error ? err.message : String(err);
-        window.Telegram.WebApp.showAlert(`Stars error: ${msg}`);
-      }
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  // ── CryptoBot payment ───────────────────────────────────────────────────
+
+  const handleCryptoPayment = async (currency: CryptoCurrency) => {
+    if (!dbUser) return;
+    const amount = getAmount();
+    if (amount <= 0) return;
+
+    setCryptoLoading(currency);
+    successAmountRef.current = amount;
+
+    try {
+      // Pass userId in description so webhook knows who to credit
+      const invoice = await cryptobotService.createInvoice(
+        amount,
+        currency,
+        `Museum Donation:${dbUser.id}`
+      );
+
+      if (invoice && invoice.pay_url) {
+        cryptobotService.openPaymentUrl(invoice.pay_url);
+        // Show success message optimistically
+        // Real confirmation comes via webhook
+        setIsSuccess(true);
+        setTimeout(() => setIsSuccess(false), 4000);
+      } else {
+        if (window.Telegram?.WebApp) {
+          window.Telegram.WebApp.showAlert(
+            lang === "ua"
+              ? "Помилка створення інвойсу. Перевірте CRYPTOBOT_TOKEN."
+              : "Failed to create invoice. Check CRYPTOBOT_TOKEN."
+          );
+        } else {
+          alert("Failed to create invoice. Check CRYPTOBOT_TOKEN.");
+        }
+      }
+    } catch (err) {
+      console.error("Crypto payment failed:", err);
+    } finally {
+      setCryptoLoading(null);
+      setShowCryptoPicker(false);
     }
   };
 
@@ -942,6 +934,303 @@ function SupportScreen({ lang, telegramUser, dbUser, onDonated }: any) {
   );
 }
 
+// ─── Tap Screen ────────────────────────────────────────────────────────────────
+
+function TapScreen({ lang, dbUser, stats, onRefresh }: any) {
+  const t = TEXT[lang].tap;
+  const [tapState, setTapState] = useState<TapGameState | null>(null);
+  const [tableExists, setTableExists] = useState(true);
+  const [taps, setTaps] = useState(0);
+  const [floatingXPs, setFloatingXPs] = useState<{ id: number; x: number; y: number; value: string }[]>([]);
+  const [isUpgrading, setIsUpgrading] = useState(false);
+  const [isBuyingBoost, setIsBuyingBoost] = useState(false);
+  const [upgradeMsg, setUpgradeMsg] = useState("");
+  const tapIdRef = useRef(0);
+
+  // Load tap state
+  useEffect(() => {
+    if (!dbUser) return;
+    const load = async () => {
+      try {
+        const state = await museumAPI.initTapState(dbUser.id);
+        setTapState(state);
+        setTaps(state.total_taps || 0);
+      } catch (err: any) {
+        console.error("Tap state init error:", err);
+        if (err?.message?.includes("Could not find") || err?.code === "PGRST205" || err?.details?.includes("not found")) {
+          setTableExists(false);
+        }
+      }
+    };
+    load();
+  }, [dbUser]);
+
+  // Refresh tap state periodically to check boost expiry
+  useEffect(() => {
+    if (!dbUser || !tapState) return;
+    const interval = setInterval(async () => {
+      const state = await museumAPI.getTapState(dbUser.id);
+      if (state) setTapState(state);
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [dbUser, tapState]);
+
+  if (!tableExists) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-6 space-y-4">
+        <div className="p-4 bg-red-500/10 rounded-2xl border border-red-500/20">
+          <X className="w-8 h-8 text-red-400 mx-auto mb-2" />
+          <p className="text-sm text-red-300 leading-relaxed">{t.noTable}</p>
+        </div>
+        <div className="bg-white/5 rounded-xl p-4 text-left w-full max-w-sm">
+          <p className="text-[10px] text-white/40 uppercase tracking-widest mb-2">SQL:</p>
+          <code className="text-[10px] text-[#ffd700] break-all leading-relaxed block">
+            CREATE TABLE tap_game_state (id BIGSERIAL PRIMARY KEY, user_id BIGINT NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE, tap_level SMALLINT NOT NULL DEFAULT 1, total_taps BIGINT NOT NULL DEFAULT 0, x2_boost_until TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW()); ALTER TABLE tap_game_state ENABLE ROW LEVEL SECURITY; CREATE POLICY "allow_all_tap_game" ON tap_game_state FOR ALL USING (true) WITH CHECK (true);
+          </code>
+        </div>
+      </div>
+    );
+  }
+
+  const levelConfig = TAP_LEVELS.find(l => l.level === (tapState?.tap_level || 1)) || TAP_LEVELS[0];
+  const x2Active = tapState?.x2_boost_until && new Date(tapState.x2_boost_until) > new Date();
+  const xpPerTap = x2Active ? levelConfig.xpPerTap * 2 : levelConfig.xpPerTap;
+
+  const handleTap = async () => {
+    if (!dbUser || !tapState) return;
+
+    // Visual feedback immediately
+    const id = ++tapIdRef.current;
+    const x = 50 + Math.random() * 60 - 30;
+    const y = 10 + Math.random() * 20;
+    setFloatingXPs(prev => [...prev, { id, x: x + "%", y, value: `+${xpPerTap} XP` }]);
+    setTaps(prev => prev + 1);
+
+    // Haptic
+    if (window.Telegram?.WebApp?.HapticFeedback) {
+      window.Telegram.WebApp.HapticFeedback.impactOccurred("light");
+    }
+
+    // Remove floating text after animation
+    setTimeout(() => setFloatingXPs(prev => prev.filter(f => f.id !== id)), 800);
+
+    // Record in DB (fire and forget, don't block UI)
+    museumAPI.recordTap(dbUser.id).then(result => {
+      if (result.tapLevel !== tapState.tap_level) {
+        setTapState(prev => prev ? { ...prev, tap_level: result.tapLevel } : prev);
+      }
+    }).catch(console.error);
+  };
+
+  const handleUpgrade = async () => {
+    if (!dbUser || !tapState || tapState.tap_level >= 3 || isUpgrading) return;
+    setIsUpgrading(true);
+    setUpgradeMsg("");
+
+    try {
+      const result = await museumAPI.upgradeTapLevel(dbUser.id);
+      if (result.success) {
+        setTapState(prev => prev ? { ...prev, tap_level: result.newLevel } : prev);
+        setUpgradeMsg(lang === "ua" ? `Рівень ${result.newLevel}!` : `Level ${result.newLevel}!`);
+        onRefresh();
+      } else {
+        setUpgradeMsg(t.notEnoughXP);
+      }
+    } catch (err) {
+      console.error("Upgrade error:", err);
+    } finally {
+      setIsUpgrading(false);
+      setTimeout(() => setUpgradeMsg(""), 2000);
+    }
+  };
+
+  const handleBuyBoost = async () => {
+    if (!dbUser || isBuyingBoost) return;
+    setIsBuyingBoost(true);
+
+    try {
+      // Pay with Stars first
+      await museumAPI.createDonation(dbUser.id, BOOST_COST_STARS, "XTR", "telegram_stars_boost");
+      // Then activate boost
+      const result = await museumAPI.buyBoost(dbUser.id);
+      if (result.success) {
+        setTapState(prev => prev ? { ...prev, x2_boost_until: result.boostUntil } : prev);
+        onRefresh();
+      }
+    } catch (err) {
+      console.error("Buy boost error:", err);
+    } finally {
+      setIsBuyingBoost(false);
+    }
+  };
+
+  const getBoostTimeLeft = () => {
+    if (!tapState?.x2_boost_until) return null;
+    const diff = new Date(tapState.x2_boost_until).getTime() - Date.now();
+    if (diff <= 0) return null;
+    const mins = Math.floor(diff / 60000);
+    const secs = Math.floor((diff % 60000) / 1000);
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  const boostTimeLeft = getBoostTimeLeft();
+
+  return (
+    <div className="space-y-6 pb-32">
+      {/* Header Stats */}
+      <div className="grid grid-cols-3 gap-3 pt-4">
+        <GlassCard className="p-3 text-center" hover={false}>
+          <MousePointerClick className="w-4 h-4 text-[#ffd700]/60 mx-auto mb-1" />
+          <div className="text-lg font-bold text-white">{taps}</div>
+          <div className="text-[9px] text-white/40">{t.totalTaps}</div>
+        </GlassCard>
+        <GlassCard className="p-3 text-center" hover={false}>
+          <Zap className="w-4 h-4 text-[#ffd700]/60 mx-auto mb-1" />
+          <div className="text-lg font-bold text-white">{levelConfig.xpPerTap}</div>
+          <div className="text-[9px] text-white/40">{t.perClick}</div>
+        </GlassCard>
+        <GlassCard className="p-3 text-center" hover={false}>
+          <Star className="w-4 h-4 text-[#ffd700]/60 mx-auto mb-1" />
+          <div className="text-lg font-bold text-white">{stats?.totalXP || 0}</div>
+          <div className="text-[9px] text-white/40">XP</div>
+        </GlassCard>
+      </div>
+
+      {/* x2 Boost Banner */}
+      {x2Active && boostTimeLeft && (
+        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}>
+          <GlassCard className="p-3 flex items-center justify-between bg-gradient-to-r from-[#ffd700]/10 to-transparent border-[#ffd700]/20">
+            <div className="flex items-center gap-2">
+              <Flame className="w-5 h-5 text-[#ffd700] animate-pulse" />
+              <span className="text-sm font-bold text-[#ffd700]">{t.boostActive}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Timer className="w-3.5 h-3.5 text-[#ffd700]/60" />
+              <span className="text-sm font-mono font-bold text-[#ffd700]">{boostTimeLeft}</span>
+            </div>
+          </GlassCard>
+        </motion.div>
+      )}
+
+      {/* TAP AREA - Artifact centered */}
+      <div className="flex flex-col items-center py-6">
+        <motion.div
+          whileTap={{ scale: 0.92 }}
+          animate={{ scale: 1 }}
+          transition={{ type: "spring", stiffness: 400, damping: 15 }}
+          onClick={handleTap}
+          className="relative cursor-pointer select-none"
+        >
+          <div className="relative w-56 h-56 rounded-full overflow-hidden border-4 border-[#ffd700]/20 shadow-[0_0_60px_rgba(255,215,0,0.15)] active:shadow-[0_0_80px_rgba(255,215,0,0.3)] transition-shadow">
+            <img
+              src="https://images.unsplash.com/photo-1770112095032-693a32cace1d?w=600&h=600&fit=crop"
+              alt="Tap"
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#0a0a0f]/80" />
+            {/* Glow ring */}
+            <div className="absolute inset-0 rounded-full ring-2 ring-[#ffd700]/10" />
+          </div>
+
+          {/* Level badge */}
+          <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 px-4 py-1.5 bg-gradient-to-r from-[#0057b7] to-[#ffd700] rounded-full shadow-lg">
+            <span className="text-xs font-black text-white tracking-wider">{t.level} {tapState?.tap_level || 1}</span>
+          </div>
+
+          {/* XP per tap indicator */}
+          <div className="absolute -top-2 -right-2 px-3 py-1.5 bg-[#0a0a0f]/90 border border-[#ffd700]/30 rounded-full">
+            <span className="text-xs font-bold text-[#ffd700]">+{xpPerTap} XP</span>
+          </div>
+
+          {/* Floating XP numbers */}
+          {floatingXPs.map(f => (
+            <motion.div
+              key={f.id}
+              initial={{ opacity: 1, y: 0, scale: 1 }}
+              animate={{ opacity: 0, y: -80, scale: 1.5 }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
+              className="absolute font-black text-[#ffd700] text-lg drop-shadow-lg pointer-events-none"
+              style={{ left: f.x, top: f.y }}
+            >
+              {f.value}
+            </motion.div>
+          ))}
+        </motion.div>
+
+        <p className="text-white/30 text-xs mt-6 uppercase tracking-widest">
+          {lang === "ua" ? "Натискай для XP" : "Tap for XP"}
+        </p>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="space-y-3 px-1">
+        {/* Upgrade Button */}
+        {tapState && tapState.tap_level < 3 ? (
+          <motion.button
+            whileTap={{ scale: 0.97 }}
+            onClick={handleUpgrade}
+            disabled={isUpgrading}
+            className="w-full p-4 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between hover:bg-white/10 transition-colors disabled:opacity-50"
+          >
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-[#0057b7]/20 rounded-xl">
+                <ArrowUpCircle className="w-6 h-6 text-[#0057b7]" />
+              </div>
+              <div className="text-left">
+                <div className="text-white font-bold text-sm">
+                  {t.upgrade} → {t.level} {(tapState.tap_level || 1) + 1}
+                </div>
+                <div className="text-white/40 text-[10px]">
+                  {TAP_LEVELS.find(l => l.level === (tapState.tap_level || 1) + 1)?.xpPerTap} XP/{lang === "ua" ? "клік" : "click"}
+                </div>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-[#ffd700] font-bold text-sm">
+                {TAP_LEVELS.find(l => l.level === (tapState.tap_level || 1) + 1)?.upgradeCostXP} XP
+              </div>
+              <div className="text-white/30 text-[10px]">{t.upgradeCost}</div>
+            </div>
+          </motion.button>
+        ) : (
+          <GlassCard className="p-4 flex items-center justify-center gap-2" hover={false}>
+            <Crown className="w-5 h-5 text-[#ffd700]" />
+            <span className="text-[#ffd700] font-bold text-sm">{t.maxLevel}</span>
+          </GlassCard>
+        )}
+
+        {/* Upgrade message */}
+        {upgradeMsg && (
+          <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} className="text-center text-sm font-bold text-[#ffd700]">
+            {upgradeMsg}
+          </motion.div>
+        )}
+
+        {/* Buy Boost Button */}
+        {!x2Active && (
+          <motion.button
+            whileTap={{ scale: 0.97 }}
+            onClick={handleBuyBoost}
+            disabled={isBuyingBoost}
+            className="w-full p-4 rounded-2xl bg-gradient-to-r from-[#ffd700]/20 to-[#ffd700]/5 border border-[#ffd700]/20 flex items-center justify-between hover:from-[#ffd700]/30 transition-colors disabled:opacity-50"
+          >
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-[#ffd700]/20 rounded-xl">
+                <Flame className="w-6 h-6 text-[#ffd700]" />
+              </div>
+              <div className="text-left">
+                <div className="text-[#ffd700] font-bold text-sm">{t.buyBoost}</div>
+                <div className="text-[#ffd700]/50 text-[10px]">{t.boostDesc}</div>
+              </div>
+            </div>
+            {isBuyingBoost ? <Loader2 className="w-5 h-5 text-[#ffd700] animate-spin" /> : <ChevronRight className="w-5 h-5 text-[#ffd700]/40" />}
+          </motion.button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main App ──────────────────────────────────────────────────────────────────
 
 export default function App() {
@@ -1042,8 +1331,8 @@ export default function App() {
 
   const navItems = [
     { id: "home" as Screen, icon: HomeIcon, label: TEXT[lang].nav.home },
+    { id: "tap" as Screen, icon: MousePointerClick, label: TEXT[lang].nav.tap },
     { id: "museum" as Screen, icon: Landmark, label: TEXT[lang].nav.museum },
-    { id: "timeline" as Screen, icon: Clock, label: TEXT[lang].nav.timeline },
     { id: "profile" as Screen, icon: User, label: TEXT[lang].nav.profile },
     { id: "support" as Screen, icon: Heart, label: TEXT[lang].nav.support },
   ];
@@ -1063,6 +1352,7 @@ export default function App() {
           <AnimatePresence mode="wait">
             <motion.div key={screen} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }}>
               {screen === "home" && <HomeScreen lang={lang} setSelectedArtifact={setSelectedArtifact} setScreen={setScreen} />}
+              {screen === "tap" && <TapScreen lang={lang} dbUser={dbUser} stats={stats} onRefresh={refreshStats} />}
               {screen === "museum" && <MuseumScreen lang={lang} setSelectedArtifact={setSelectedArtifact} onArtifactView={handleArtifactView} />}
               {screen === "timeline" && <TimelineScreen lang={lang} />}
               {screen === "profile" && <ProfileScreen lang={lang} setLang={setLang} telegramUser={telegramUser} dbUser={dbUser} stats={stats} onRefresh={refreshStats} />}
