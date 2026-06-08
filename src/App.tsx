@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { initTelegram, getTelegramUser } from "./lib/telegram";
-import { museumAPI, TAP_LEVELS, BOOST_COST_STARS, BOOST_DURATION_MIN } from "./lib/api";
-import type { UserStats, TapGameState } from "./lib/api";
-import { cryptobotService, CRYPTOBOT_CONFIG, type CryptoCurrency } from "./services/cryptobot";
+import { museumAPI, TAP_LEVELS, BOOST_COST_STARS, BOOST_DURATION_MIN, TAP_ARTIFACTS } from "./lib/api";
+import type { UserStats, TapGameState, TapArtifact } from "./lib/api";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Home as HomeIcon,
@@ -36,6 +35,7 @@ import {
   Flame,
   ArrowUpCircle,
   Timer,
+  ShoppingBag,
 } from "lucide-react";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
@@ -237,20 +237,20 @@ const ALL_ACHIEVEMENTS = [
 const TEXT: Record<Lang, any> = {
   ua: {
     home: { title: "Віртуальний Музей України", subtitle: "Подорож крізь тисячоліття історії", featured: "Рекомендовані", explore: "Досліджуйте", artifacts: "артефактів", viewAll: "Дивитись всі" },
-    tap: { title: "Тапалка", perClick: "XP за клік", totalTaps: "Всього тапів", level: "Рівень", upgrade: "Покращити", upgradeCost: "Вартість", maxLevel: "Макс рівень!", buyBoost: "x2 Буст", boostDesc: `${BOOST_DURATION_MIN} хв x2 за ${BOOST_COST_STARS} Stars`, boostActive: "x2 Активний!", boostTimeLeft: "Залишилось", notEnoughXP: "Недостатньо XP", noTable: "Таблиця tap_game_state не знайдена. Створіть її в Supabase Dashboard → SQL Editor" },
+    tap: { title: "Тапалка", perClick: "XP за клік", totalTaps: "Всього тапів", level: "Рівень", upgrade: "Покращити", upgradeCost: "Вартість", maxLevel: "Макс рівень!", buyBoost: "x2 Буст", boostDesc: `${BOOST_DURATION_MIN} хв x2 за ${BOOST_COST_STARS} Stars`, boostActive: "x2 Активний!", boostTimeLeft: "Залишилось", notEnoughXP: "Недостатньо XP", noTable: "Таблиця tap_game_state не знайдена. Створіть її в Supabase Dashboard → SQL Editor", shop: "Прокачка", shopDesc: "Купуй артефакти для більшого XP", buyXP: "Купити за XP", buyStars: "Купити за Stars", owned: "Куплено", equip: "Встановити", equipped: "Активний", artifactBonus: "бонус" },
     museum: { title: "Колекція", search: "Пошук артефактів...", all: "Всі" },
     timeline: { title: "Хронологія", subtitle: "Ключові події української історії" },
     profile: { title: "Профіль", rank: "Ранг", timeSpent: "Час у музеї", totalVisits: "Візитів", viewedArtifacts: "Переглянуто", achievements: "Досягнення", donations: "Донати", nextRank: "Наступний ранг" },
-    support: { title: "Підтримка", selectAmount: "Оберіть суму", customAmount: "Інша сума", payStars: "Оплатити Stars", payCrypto: "Криптогаманець", thankYou: "Дякуємо за підтримку!", supportMessage: "Ваш внесок допомагає зберігати історію України.", totalRaised: "Зібрано разом", donorsCount: "Доброчинців", version: "Версія 1.0.0" },
+    support: { title: "Підтримка", selectAmount: "Оберіть суму", customAmount: "Інша сума", payStars: "Оплатити Stars", thankYou: "Дякуємо за підтримку!", supportMessage: "Ваш внесок допомагає зберігати історію України.", totalRaised: "Зібрано разом", donorsCount: "Доброчинців", version: "Версія 1.0.0" },
     nav: { home: "Головна", tap: "Тап", museum: "Музей", timeline: "Час", profile: "Профіль", support: "Підтримка" },
   },
   en: {
     home: { title: "Virtual Museum of Ukraine", subtitle: "Journey through millennia of history", featured: "Featured", explore: "Explore", artifacts: "artifacts", viewAll: "View all" },
-    tap: { title: "Tap Game", perClick: "XP per click", totalTaps: "Total taps", level: "Level", upgrade: "Upgrade", upgradeCost: "Cost", maxLevel: "Max Level!", buyBoost: "x2 Boost", boostDesc: `${BOOST_DURATION_MIN} min x2 for ${BOOST_COST_STARS} Stars`, boostActive: "x2 Active!", boostTimeLeft: "Time left", notEnoughXP: "Not enough XP", noTable: "tap_game_state table not found. Create it in Supabase Dashboard → SQL Editor" },
+    tap: { title: "Tap Game", perClick: "XP per click", totalTaps: "Total taps", level: "Level", upgrade: "Upgrade", upgradeCost: "Cost", maxLevel: "Max Level!", buyBoost: "x2 Boost", boostDesc: `${BOOST_DURATION_MIN} min x2 for ${BOOST_COST_STARS} Stars`, boostActive: "x2 Active!", boostTimeLeft: "Time left", notEnoughXP: "Not enough XP", noTable: "tap_game_state table not found. Create it in Supabase Dashboard → SQL Editor", shop: "Upgrade Shop", shopDesc: "Buy artifacts for more XP", buyXP: "Buy for XP", buyStars: "Buy for Stars", owned: "Owned", equip: "Equip", equipped: "Active", artifactBonus: "bonus" },
     museum: { title: "Collection", search: "Search artifacts...", all: "All" },
     timeline: { title: "Timeline", subtitle: "Key events in Ukrainian history" },
     profile: { title: "Profile", rank: "Rank", timeSpent: "Time in Museum", totalVisits: "Visits", viewedArtifacts: "Artifacts Viewed", achievements: "Achievements", donations: "Donations", nextRank: "Next Rank" },
-    support: { title: "Support", selectAmount: "Select Amount", customAmount: "Custom Amount", payStars: "Pay with Stars", payCrypto: "Crypto Wallet", thankYou: "Thank you for support!", supportMessage: "Your contribution helps preserve Ukraine's history.", totalRaised: "Total Raised", donorsCount: "Donors", version: "Version 1.0.0" },
+    support: { title: "Support", selectAmount: "Select Amount", customAmount: "Custom Amount", payStars: "Pay with Stars", thankYou: "Thank you for support!", supportMessage: "Your contribution helps preserve Ukraine's history.", totalRaised: "Total Raised", donorsCount: "Donors", version: "Version 1.0.0" },
     nav: { home: "Home", tap: "Tap", museum: "Museum", timeline: "Timeline", profile: "Profile", support: "Support" },
   },
 };
@@ -685,8 +685,6 @@ function SupportScreen({ lang, telegramUser, dbUser, onDonated }: any) {
   const [isSuccess, setIsSuccess] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [globalStats, setGlobalStats] = useState<{ totalRaised: number; donorsCount: number }>({ totalRaised: 0, donorsCount: 0 });
-  const [showCryptoPicker, setShowCryptoPicker] = useState(false);
-  const [cryptoLoading, setCryptoLoading] = useState<CryptoCurrency | null>(null);
   const successAmountRef = useRef<number>(0);
 
   const amounts = [10, 25, 50, 100];
@@ -791,49 +789,6 @@ function SupportScreen({ lang, telegramUser, dbUser, onDonated }: any) {
     }
   };
 
-  // ── CryptoBot payment ───────────────────────────────────────────────────
-
-  const handleCryptoPayment = async (currency: CryptoCurrency) => {
-    if (!dbUser) return;
-    const amount = getAmount();
-    if (amount <= 0) return;
-
-    setCryptoLoading(currency);
-    successAmountRef.current = amount;
-
-    try {
-      // Pass userId in description so webhook knows who to credit
-      const invoice = await cryptobotService.createInvoice(
-        amount,
-        currency,
-        `Museum Donation:${dbUser.id}`
-      );
-
-      if (invoice && invoice.pay_url) {
-        cryptobotService.openPaymentUrl(invoice.pay_url);
-        // Show success message optimistically
-        // Real confirmation comes via webhook
-        setIsSuccess(true);
-        setTimeout(() => setIsSuccess(false), 4000);
-      } else {
-        if (window.Telegram?.WebApp) {
-          window.Telegram.WebApp.showAlert(
-            lang === "ua"
-              ? "Помилка створення інвойсу. Перевірте CRYPTOBOT_TOKEN."
-              : "Failed to create invoice. Check CRYPTOBOT_TOKEN."
-          );
-        } else {
-          alert("Failed to create invoice. Check CRYPTOBOT_TOKEN.");
-        }
-      }
-    } catch (err) {
-      console.error("Crypto payment failed:", err);
-    } finally {
-      setCryptoLoading(null);
-      setShowCryptoPicker(false);
-    }
-  };
-
   // ── Success screen ──────────────────────────────────────────────────────
 
   if (isSuccess) {
@@ -902,52 +857,7 @@ function SupportScreen({ lang, telegramUser, dbUser, onDonated }: any) {
             </div>
             {isProcessing ? <Loader2 className="w-5 h-5 text-white animate-spin" /> : <ChevronRight className="w-5 h-5 text-white/60" />}
           </motion.button>
-
-          {/* CryptoBot */}
-          <motion.button whileTap={{ scale: 0.98 }} onClick={() => setShowCryptoPicker(!showCryptoPicker)} disabled={getAmount() <= 0} className="w-full p-4 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between group hover:bg-white/10 transition-colors disabled:opacity-30">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-[#ffd700]/10 rounded-xl"><Coins className="w-6 h-6 text-[#ffd700]" /></div>
-              <div className="text-left">
-                <div className="text-white font-bold">{t.payCrypto}</div>
-                <div className="text-white/40 text-[10px]">TON, USDT, BTC</div>
-              </div>
-            </div>
-            <ChevronRight className={`w-5 h-5 text-white/40 transition-transform ${showCryptoPicker ? "rotate-90" : ""}`} />
-          </motion.button>
         </div>
-
-        {/* Crypto Currency Picker */}
-        <AnimatePresence>
-          {showCryptoPicker && (
-            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-              <div className="space-y-2 pt-1">
-                {CRYPTOBOT_CONFIG.currencies.map((c) => (
-                  <button
-                    key={c.key}
-                    onClick={() => handleCryptoPayment(c.key)}
-                    disabled={cryptoLoading !== null}
-                    className="w-full p-3 rounded-xl bg-white/[0.03] border border-white/5 flex items-center justify-between hover:bg-white/[0.06] transition-colors disabled:opacity-50"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm" style={{ backgroundColor: `${c.color}20`, color: c.color }}>
-                        {c.icon}
-                      </div>
-                      <div className="text-left">
-                        <div className="text-white font-bold text-sm">{c.name}</div>
-                        <div className="text-white/30 text-[10px]">{c.key}</div>
-                      </div>
-                    </div>
-                    {cryptoLoading === c.key ? (
-                      <Loader2 className="w-4 h-4 text-white/50 animate-spin" />
-                    ) : (
-                      <ChevronRight className="w-4 h-4 text-white/20" />
-                    )}
-                  </button>
-                ))}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
 
       {/* Info */}
@@ -978,13 +888,20 @@ function TapScreen({ lang, dbUser, stats, onRefresh }: any) {
   const [upgradeMsg, setUpgradeMsg] = useState("");
   const tapIdRef = useRef(0);
   const [localXP, setLocalXP] = useState(stats?.totalXP || 0);
+  const [ownedArtifacts, setOwnedArtifacts] = useState<string[]>([]);
+  const [showShop, setShowShop] = useState(false);
+  const [buyingArtifact, setBuyingArtifact] = useState<string | null>(null);
+
+  // Batch tap tracking — accumulate locally, flush to DB every 2 seconds
+  const pendingTapsRef = useRef<{ count: number; totalXP: number }>({ count: 0, totalXP: 0 });
+  const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Keep localXP in sync with stats prop
   useEffect(() => {
     if (stats?.totalXP !== undefined) setLocalXP(stats.totalXP);
   }, [stats?.totalXP]);
 
-  // Load tap state
+  // Load tap state + owned artifacts
   useEffect(() => {
     if (!dbUser) return;
     const load = async () => {
@@ -992,6 +909,8 @@ function TapScreen({ lang, dbUser, stats, onRefresh }: any) {
         const state = await museumAPI.initTapState(dbUser.id);
         setTapState(state);
         setTaps(state.total_taps || 0);
+        const owned = await museumAPI.getOwnedArtifacts(dbUser.id);
+        setOwnedArtifacts(owned);
       } catch (err: any) {
         console.error("Tap state init error:", err);
         if (err?.message?.includes("Could not find") || err?.code === "PGRST205" || err?.details?.includes("not found")) {
@@ -1002,15 +921,37 @@ function TapScreen({ lang, dbUser, stats, onRefresh }: any) {
     load();
   }, [dbUser]);
 
-  // Refresh tap state periodically to check boost expiry + sync XP
+  // Flush pending taps to DB periodically
+  const flushTaps = useCallback(async () => {
+    if (!dbUser || pendingTapsRef.current.count === 0) return;
+    const batch = { ...pendingTapsRef.current };
+    pendingTapsRef.current = { count: 0, totalXP: 0 };
+    try {
+      await museumAPI.recordTapBatch(dbUser.id, batch.count, batch.totalXP);
+    } catch (err) {
+      console.error("Batch tap flush error:", err);
+      // Re-add on failure
+      pendingTapsRef.current.count += batch.count;
+      pendingTapsRef.current.totalXP += batch.totalXP;
+    }
+  }, [dbUser]);
+
+  useEffect(() => {
+    const interval = setInterval(flushTaps, 2000);
+    return () => {
+      clearInterval(interval);
+      flushTaps();
+    };
+  }, [flushTaps]);
+
+  // Refresh tap state periodically to check boost expiry
   useEffect(() => {
     if (!dbUser || !tapState) return;
     const interval = setInterval(async () => {
       const state = await museumAPI.getTapState(dbUser.id);
       if (state) setTapState(state);
-      // Sync real XP from DB every 5s
       onRefresh();
-    }, 5000);
+    }, 10000);
     return () => clearInterval(interval);
   }, [dbUser, tapState]);
 
@@ -1031,36 +972,31 @@ function TapScreen({ lang, dbUser, stats, onRefresh }: any) {
     );
   }
 
+  const activeArtifact = TAP_ARTIFACTS.find(a => a.key === tapState?.active_artifact);
+  const activeBonus = activeArtifact?.xpBonus || 0;
   const levelConfig = TAP_LEVELS.find(l => l.level === (tapState?.tap_level || 1)) || TAP_LEVELS[0];
   const x2Active = tapState?.x2_boost_until && new Date(tapState.x2_boost_until) > new Date();
-  const xpPerTap = x2Active ? levelConfig.xpPerTap * 2 : levelConfig.xpPerTap;
+  const baseXP = levelConfig.xpPerTap + activeBonus;
+  const xpPerTap = x2Active ? baseXP * 2 : baseXP;
 
   const handleTap = async () => {
     if (!dbUser || !tapState) return;
 
-    // Visual feedback immediately
     const id = ++tapIdRef.current;
     const x = 50 + Math.random() * 60 - 30;
     const y = 10 + Math.random() * 20;
     setFloatingXPs(prev => [...prev, { id, x: x + "%", y, value: `+${xpPerTap} XP` }]);
     setTaps(prev => prev + 1);
-    // Optimistically add XP to local counter
     setLocalXP(prev => prev + xpPerTap);
 
-    // Haptic
+    pendingTapsRef.current.count += 1;
+    pendingTapsRef.current.totalXP += xpPerTap;
+
     if (window.Telegram?.WebApp?.HapticFeedback) {
       window.Telegram.WebApp.HapticFeedback.impactOccurred("light");
     }
 
-    // Remove floating text after animation
     setTimeout(() => setFloatingXPs(prev => prev.filter(f => f.id !== id)), 800);
-
-    // Record in DB (fire and forget, don't block UI)
-    museumAPI.recordTap(dbUser.id).then(result => {
-      if (result.tapLevel !== tapState.tap_level) {
-        setTapState(prev => prev ? { ...prev, tap_level: result.tapLevel } : prev);
-      }
-    }).catch(console.error);
   };
 
   const handleUpgrade = async () => {
@@ -1169,6 +1105,106 @@ function TapScreen({ lang, dbUser, stats, onRefresh }: any) {
 
   const boostTimeLeft = getBoostTimeLeft();
 
+  // Buy artifact for XP
+  const handleBuyArtifactXP = async (artifact: TapArtifact) => {
+    if (!dbUser || buyingArtifact) return;
+    setBuyingArtifact(artifact.key);
+    try {
+      const result = await museumAPI.buyArtifactXP(dbUser.id, artifact.key, artifact.costXP);
+      if (result.success) {
+        setOwnedArtifacts(prev => [...prev, artifact.key]);
+        setTapState(prev => prev ? { ...prev, active_artifact: artifact.key } : prev);
+        setLocalXP(prev => prev - artifact.costXP);
+        onRefresh();
+      } else {
+        setUpgradeMsg(t.notEnoughXP);
+        setTimeout(() => setUpgradeMsg(""), 2000);
+      }
+    } catch (err) {
+      console.error("Buy artifact error:", err);
+    } finally {
+      setBuyingArtifact(null);
+    }
+  };
+
+  // Buy artifact for Stars
+  const handleBuyArtifactStars = async (artifact: TapArtifact) => {
+    if (!dbUser || buyingArtifact) return;
+    setBuyingArtifact(artifact.key);
+    try {
+      if (window.Telegram?.WebApp) {
+        const WebApp = window.Telegram.WebApp;
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+        const invoiceRes = await fetch(`${supabaseUrl}/functions/v1/stars-invoice`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${supabaseKey}`,
+            apikey: supabaseKey,
+          },
+          body: JSON.stringify({
+            title: artifact.name[lang as "ua" | "en"],
+            description: artifact.description[lang as "ua" | "en"],
+            prices: [{ label: artifact.name.en, amount: artifact.costStars }],
+            payload: `artifact_${artifact.key}_${dbUser.id}_${Date.now()}`,
+          }),
+        });
+
+        if (!invoiceRes.ok) {
+          console.error("Invoice creation failed");
+          setBuyingArtifact(null);
+          return;
+        }
+
+        const { invoice_link, error: invError } = await invoiceRes.json();
+        if (invError || !invoice_link) {
+          console.error("No invoice link:", invError);
+          setBuyingArtifact(null);
+          return;
+        }
+
+        WebApp.openInvoice(invoice_link, async (status: string) => {
+          if (status === "paid") {
+            const result = await museumAPI.buyArtifactStars(dbUser.id, artifact.key);
+            if (result.success) {
+              setOwnedArtifacts(prev => [...prev, artifact.key]);
+              setTapState(prev => prev ? { ...prev, active_artifact: artifact.key } : prev);
+              await museumAPI.createDonation(dbUser.id, artifact.costStars, "XTR", `telegram_stars_artifact_${artifact.key}`);
+              onRefresh();
+              if (WebApp.HapticFeedback) {
+                WebApp.HapticFeedback.notificationOccurred("success");
+              }
+            }
+          }
+          setBuyingArtifact(null);
+        });
+      } else {
+        // Test mode
+        const result = await museumAPI.buyArtifactStars(dbUser.id, artifact.key);
+        if (result.success) {
+          setOwnedArtifacts(prev => [...prev, artifact.key]);
+          setTapState(prev => prev ? { ...prev, active_artifact: artifact.key } : prev);
+          onRefresh();
+        }
+        setBuyingArtifact(null);
+      }
+    } catch (err) {
+      console.error("Buy artifact stars error:", err);
+      setBuyingArtifact(null);
+    }
+  };
+
+  // Equip artifact
+  const handleEquipArtifact = async (artifactKey: string) => {
+    if (!dbUser) return;
+    await museumAPI.equipArtifact(dbUser.id, artifactKey);
+    setTapState(prev => prev ? { ...prev, active_artifact: artifactKey } : prev);
+  };
+
+  // Get active artifact image for tap area
+  const tapImage = activeArtifact?.image || "https://images.unsplash.com/photo-1770112095032-693a32cace1d?w=600&h=600&fit=crop";
+
   return (
     <div className="space-y-6 pb-32">
       {/* Header Stats */}
@@ -1180,7 +1216,7 @@ function TapScreen({ lang, dbUser, stats, onRefresh }: any) {
         </GlassCard>
         <GlassCard className="p-3 text-center" hover={false}>
           <Zap className="w-4 h-4 text-[#ffd700]/60 mx-auto mb-1" />
-          <div className="text-lg font-bold text-white">{levelConfig.xpPerTap}</div>
+          <div className="text-lg font-bold text-white">{xpPerTap}</div>
           <div className="text-[9px] text-white/40">{t.perClick}</div>
         </GlassCard>
         <GlassCard className="p-3 text-center" hover={false}>
@@ -1217,7 +1253,7 @@ function TapScreen({ lang, dbUser, stats, onRefresh }: any) {
         >
           <div className="relative w-56 h-56 rounded-full overflow-hidden border-4 border-[#ffd700]/20 shadow-[0_0_60px_rgba(255,215,0,0.15)] active:shadow-[0_0_80px_rgba(255,215,0,0.3)] transition-shadow">
             <img
-              src="https://images.unsplash.com/photo-1770112095032-693a32cace1d?w=600&h=600&fit=crop"
+              src={tapImage}
               alt="Tap"
               className="w-full h-full object-cover"
             />
@@ -1320,6 +1356,85 @@ function TapScreen({ lang, dbUser, stats, onRefresh }: any) {
             {isBuyingBoost ? <Loader2 className="w-5 h-5 text-[#ffd700] animate-spin" /> : <ChevronRight className="w-5 h-5 text-[#ffd700]/40" />}
           </motion.button>
         )}
+
+        {/* Upgrade Shop Toggle */}
+        <motion.button
+          whileTap={{ scale: 0.97 }}
+          onClick={() => setShowShop(!showShop)}
+          className="w-full p-4 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between hover:bg-white/10 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-[#0057b7]/20 rounded-xl">
+              <ShoppingBag className="w-6 h-6 text-[#0057b7]" />
+            </div>
+            <div className="text-left">
+              <div className="text-white font-bold text-sm">{t.shop}</div>
+              <div className="text-white/40 text-[10px]">{t.shopDesc}</div>
+            </div>
+          </div>
+          <ChevronRight className={`w-5 h-5 text-white/40 transition-transform ${showShop ? "rotate-90" : ""}`} />
+        </motion.button>
+
+        {/* Shop Items */}
+        <AnimatePresence>
+          {showShop && (
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+              <div className="space-y-2 pt-2">
+                {TAP_ARTIFACTS.map((artifact) => {
+                  const owned = ownedArtifacts.includes(artifact.key);
+                  const equipped = tapState?.active_artifact === artifact.key;
+                  const canAffordXP = artifact.costXP > 0 && localXP >= artifact.costXP;
+
+                  return (
+                    <div key={artifact.key} className={`p-3 rounded-2xl border flex items-center gap-3 transition-colors ${owned ? "bg-[#ffd700]/5 border-[#ffd700]/20" : "bg-white/[0.03] border-white/5"}`}>
+                      <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0">
+                        <img src={artifact.image} alt={artifact.name[lang as "ua" | "en"]} className="w-full h-full object-cover" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-white font-bold text-xs truncate">{artifact.name[lang as "ua" | "en"]}</div>
+                        <div className="text-[#ffd700] text-[10px] font-bold">+{artifact.xpBonus} XP/{lang === "ua" ? "клік" : "click"}</div>
+                      </div>
+                      <div className="flex-shrink-0">
+                        {owned ? (
+                          equipped ? (
+                            <span className="text-[10px] font-bold text-[#ffd700] bg-[#ffd700]/10 px-3 py-1.5 rounded-lg">{t.equipped}</span>
+                          ) : (
+                            <motion.button whileTap={{ scale: 0.95 }} onClick={() => handleEquipArtifact(artifact.key)} className="text-[10px] font-bold text-white bg-[#0057b7] px-3 py-1.5 rounded-lg">
+                              {t.equip}
+                            </motion.button>
+                          )
+                        ) : (
+                          <div className="flex flex-col gap-1">
+                            {artifact.costXP > 0 && (
+                              <motion.button
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => handleBuyArtifactXP(artifact)}
+                                disabled={buyingArtifact !== null || !canAffordXP}
+                                className={`text-[10px] font-bold px-3 py-1.5 rounded-lg ${canAffordXP ? "text-[#ffd700] bg-[#ffd700]/10 hover:bg-[#ffd700]/20" : "text-white/30 bg-white/5"} disabled:opacity-50`}
+                              >
+                                {artifact.costXP} XP
+                              </motion.button>
+                            )}
+                            {artifact.costStars > 0 && (
+                              <motion.button
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => handleBuyArtifactStars(artifact)}
+                                disabled={buyingArtifact !== null}
+                                className="text-[10px] font-bold text-white bg-[#0088cc] px-3 py-1.5 rounded-lg hover:bg-[#0099dd] disabled:opacity-50"
+                              >
+                                {artifact.costStars} Stars
+                              </motion.button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
