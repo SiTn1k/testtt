@@ -28,6 +28,7 @@ export interface TapGameState {
   tap_level: number;
   total_taps: number;
   x2_boost_until: string | null;
+  active_artifact: string;
 }
 
 export const TAP_LEVELS = [
@@ -38,6 +39,74 @@ export const TAP_LEVELS = [
 
 export const BOOST_COST_STARS = 25;
 export const BOOST_DURATION_MIN = 15;
+
+// Tap artifacts that can be purchased — each gives more XP per click
+export interface TapArtifact {
+  key: string;
+  name: { ua: string; en: string };
+  description: { ua: string; en: string };
+  xpBonus: number; // additional XP per tap
+  costXP: number;  // price in XP (0 = Stars only)
+  costStars: number; // price in Stars (0 = XP only)
+  image: string;
+}
+
+export const TAP_ARTIFACTS: TapArtifact[] = [
+  {
+    key: "kyiv_coin",
+    name: { ua: "Київська Монета", en: "Kyiv Coin" },
+    description: { ua: "Давня монета Київської Русі +2 XP/клік", en: "Ancient coin of Kyivan Rus +2 XP/click" },
+    xpBonus: 2,
+    costXP: 300,
+    costStars: 0,
+    image: "https://images.unsplash.com/photo-1621939514649-280e2ee25f60?w=200&h=200&fit=crop",
+  },
+  {
+    key: "cossack_saber",
+    name: { ua: "Козацька Шабля", en: "Cossack Saber" },
+    description: { ua: "Шабля запорізького козака +3 XP/клік", en: "Saber of a Zaporizhian Cossack +3 XP/click" },
+    xpBonus: 3,
+    costXP: 800,
+    costStars: 0,
+    image: "https://images.unsplash.com/photo-1595437111809-3b0ac8707b27?w=200&h=200&fit=crop",
+  },
+  {
+    key: "vyshyvanka_amulet",
+    name: { ua: "Оберіг Вишиванки", en: "Vyshyvanka Amulet" },
+    description: { ua: "Магічний оберіг з орнаментами +5 XP/клік", en: "Magical amulet with ornaments +5 XP/click" },
+    xpBonus: 5,
+    costXP: 0,
+    costStars: 50,
+    image: "https://images.unsplash.com/photo-1655678204995-0e1eb3d2fdbc?w=200&h=200&fit=crop",
+  },
+  {
+    key: "pysanka_power",
+    name: { ua: "Сила Писанки", en: "Pysanka Power" },
+    description: { ua: "Давня сила писанки +7 XP/клік", en: "Ancient power of pysanka +7 XP/click" },
+    xpBonus: 7,
+    costXP: 0,
+    costStars: 100,
+    image: "https://images.unsplash.com/photo-1617191574040-c57e8af59ddb?w=200&h=200&fit=crop",
+  },
+  {
+    key: "golden_crown",
+    name: { ua: "Золота Корона", en: "Golden Crown" },
+    description: { ua: "Корона Ярослава Мудрого +10 XP/клік", en: "Crown of Yaroslav the Wise +10 XP/click" },
+    xpBonus: 10,
+    costXP: 3000,
+    costStars: 0,
+    image: "https://images.unsplash.com/photo-1596181938181-6a00051c5746?w=200&h=200&fit=crop",
+  },
+  {
+    key: "trident_relic",
+    name: { ua: "Реліквія Тризуба", en: "Trident Relic" },
+    description: { ua: "Священна реліквія України +15 XP/клік", en: "Sacred relic of Ukraine +15 XP/click" },
+    xpBonus: 15,
+    costXP: 0,
+    costStars: 200,
+    image: "https://images.unsplash.com/photo-1605991362090-47188b84d40a?w=200&h=200&fit=crop",
+  },
+];
 
 export interface UserStats {
   totalMinutes: number;
@@ -83,7 +152,6 @@ export class MuseumAPI {
     language_code?: string;
     photo_url?: string;
   }): Promise<UserProfile> {
-    // Try to find existing user
     const { data: existing, error: findError } = await supabase
       .from("users")
       .select("*")
@@ -105,7 +173,6 @@ export class MuseumAPI {
       return data || existing;
     }
 
-    // Create new user
     const { data, error } = await supabase
       .from("users")
       .insert([{
@@ -142,7 +209,6 @@ export class MuseumAPI {
   }
 
   async getStats(userId: number, lang: "ua" | "en"): Promise<UserStats> {
-    // Total minutes from sessions
     const { data: sessions } = await supabase
       .from("activity_sessions")
       .select("minutes_spent")
@@ -154,7 +220,6 @@ export class MuseumAPI {
     );
     const visitCount = (sessions || []).length;
 
-    // Artifacts viewed (unique)
     const { data: views } = await supabase
       .from("artifact_views")
       .select("artifact_id")
@@ -162,7 +227,6 @@ export class MuseumAPI {
 
     const artifactsViewed = new Set((views || []).map((v: { artifact_id: string }) => v.artifact_id)).size;
 
-    // Donations
     const { data: dons } = await supabase
       .from("donations")
       .select("amount")
@@ -174,7 +238,6 @@ export class MuseumAPI {
       0
     );
 
-    // Achievements
     const { data: achs } = await supabase
       .from("achievements")
       .select("achievement_key")
@@ -182,20 +245,13 @@ export class MuseumAPI {
 
     const achievements = (achs || []).map((a: { achievement_key: string }) => a.achievement_key);
 
-    // Get stored XP from user row
     const { data: user } = await supabase
       .from("users")
       .select("total_xp")
       .eq("id", userId)
       .maybeSingle();
 
-    const storedXP = user?.total_xp || 0;
-
-    // Calculate live XP (in case stored is stale)
-    const liveXP = storedXP;
-    // Recalculate: storedXP should already be correct, but let's verify
-    // We keep storedXP as source of truth since we update it on every action
-
+    const liveXP = user?.total_xp || 0;
     const rank = getRank(liveXP, lang);
 
     return {
@@ -207,7 +263,7 @@ export class MuseumAPI {
       level: RANK_THRESHOLDS.findIndex((r) => liveXP >= r.minXP) + 1,
       rankKey: rank.key,
       rankName: rank.name,
-      nextLevelXP: rank.nextLevelXP,
+      nextLevelXP: rank.nextXP,
       achievements,
     };
   }
@@ -229,7 +285,6 @@ export class MuseumAPI {
   }
 
   async endSession(sessionId: number, userId: number): Promise<void> {
-    // Get session start time
     const { data: session } = await supabase
       .from("activity_sessions")
       .select("session_start")
@@ -251,10 +306,8 @@ export class MuseumAPI {
       })
       .eq("id", sessionId);
 
-    // Add XP for time spent
-    await this.addXP(userId, minutesSpent);
+    await this.addXPAtomic(userId, minutesSpent);
 
-    // Check ONE_HOUR achievement
     if (minutesSpent >= 60) {
       await this.awardAchievement(userId, "ONE_HOUR");
     }
@@ -263,7 +316,6 @@ export class MuseumAPI {
   // ── Artifact Views ─────────────────────────────────────────────────────────
 
   async trackArtifactView(userId: number, artifactId: string): Promise<void> {
-    // Check if already viewed
     const { data: existing } = await supabase
       .from("artifact_views")
       .select("id")
@@ -271,16 +323,14 @@ export class MuseumAPI {
       .eq("artifact_id", artifactId)
       .maybeSingle();
 
-    if (existing) return; // Already viewed, no new XP
+    if (existing) return;
 
     await supabase.from("artifact_views").insert([
       { user_id: userId, artifact_id: artifactId, viewed_at: new Date().toISOString() },
     ]);
 
-    // Add 5 XP for new artifact view
-    await this.addXP(userId, 5);
+    await this.addXPAtomic(userId, 5);
 
-    // Check TEN_ARTIFACTS achievement
     const { data: views } = await supabase
       .from("artifact_views")
       .select("artifact_id")
@@ -317,13 +367,10 @@ export class MuseumAPI {
       throw error;
     }
 
-    // Add XP for donation (1 XP per 1 currency)
-    await this.addXP(userId, Math.floor(amount));
+    await this.addXPAtomic(userId, Math.floor(amount));
 
-    // Award FIRST_DONATION
     await this.awardAchievement(userId, "FIRST_DONATION");
 
-    // Check DONATED_100
     const { data: dons } = await supabase
       .from("donations")
       .select("amount")
@@ -393,7 +440,7 @@ export class MuseumAPI {
 
     const { data, error } = await supabase
       .from("tap_game_state")
-      .insert([{ user_id: userId, tap_level: 1, total_taps: 0 }])
+      .insert([{ user_id: userId, tap_level: 1, total_taps: 0, active_artifact: "default" }])
       .select()
       .single();
 
@@ -404,28 +451,20 @@ export class MuseumAPI {
     return data;
   }
 
-  async recordTap(userId: number): Promise<{ xpEarned: number; totalTaps: number; tapLevel: number; x2Active: boolean }> {
-    const state = await this.getTapState(userId);
-    if (!state) throw new Error("Tap state not found. Call initTapState first.");
+  async recordTapBatch(userId: number, count: number, totalXP: number): Promise<{ newTaps: number; newXp: number }> {
+    // Atomic XP increment
+    const { data: xpResult } = await supabase.rpc("atomic_add_xp", {
+      p_user_id: userId,
+      p_xp: totalXP,
+    });
 
-    const levelConfig = TAP_LEVELS.find(l => l.level === state.tap_level) || TAP_LEVELS[0];
-    let xpEarned = levelConfig.xpPerTap;
+    // Atomic tap count increment
+    const { data: tapResult } = await supabase.rpc("atomic_add_taps", {
+      p_user_id: userId,
+      p_count: count,
+    });
 
-    // Check if x2 boost is active
-    const x2Active = state.x2_boost_until && new Date(state.x2_boost_until) > new Date();
-    if (x2Active) xpEarned *= 2;
-
-    // Add XP
-    await this.addXP(userId, xpEarned);
-
-    // Increment total_taps
-    const newTaps = (state.total_taps || 0) + 1;
-    await supabase
-      .from("tap_game_state")
-      .update({ total_taps: newTaps, updated_at: new Date().toISOString() })
-      .eq("user_id", userId);
-
-    return { xpEarned, totalTaps: newTaps, tapLevel: state.tap_level, x2Active: !!x2Active };
+    return { newTaps: tapResult || 0, newXp: xpResult || 0 };
   }
 
   async upgradeTapLevel(userId: number): Promise<{ success: boolean; newLevel: number; xpSpent: number }> {
@@ -438,7 +477,8 @@ export class MuseumAPI {
     const nextConfig = TAP_LEVELS.find(l => l.level === nextLevel);
     if (!nextConfig || !nextConfig.upgradeCostXP) return { success: false, newLevel: state.tap_level, xpSpent: 0 };
 
-    // Check if user has enough XP
+    // Atomic: subtract XP and upgrade level in one go
+    // First check if enough XP
     const { data: user } = await supabase
       .from("users")
       .select("total_xp")
@@ -448,11 +488,8 @@ export class MuseumAPI {
     const currentXP = user?.total_xp || 0;
     if (currentXP < nextConfig.upgradeCostXP) return { success: false, newLevel: state.tap_level, xpSpent: 0 };
 
-    // Spend XP and upgrade level
-    await supabase
-      .from("users")
-      .update({ total_xp: currentXP - nextConfig.upgradeCostXP })
-      .eq("id", userId);
+    // Use negative atomic increment to spend XP
+    await supabase.rpc("atomic_add_xp", { p_user_id: userId, p_xp: -nextConfig.upgradeCostXP });
 
     await supabase
       .from("tap_game_state")
@@ -463,7 +500,6 @@ export class MuseumAPI {
   }
 
   async buyBoost(userId: number): Promise<{ success: boolean; boostUntil: string | null }> {
-    // This should be called AFTER the Stars payment is confirmed
     const boostUntil = new Date(Date.now() + BOOST_DURATION_MIN * 60 * 1000).toISOString();
 
     const { error } = await supabase
@@ -479,10 +515,23 @@ export class MuseumAPI {
     return { success: true, boostUntil };
   }
 
-  // ── XP ─────────────────────────────────────────────────────────────────────
+  // ── Tap Artifacts ────────────────────────────────────────────────────────
 
-  private async addXP(userId: number, xpToAdd: number): Promise<void> {
-    // Use atomic increment via RPC would be ideal, but we'll do read+write
+  async getOwnedArtifacts(userId: number): Promise<string[]> {
+    const { data, error } = await supabase
+      .from("tap_artifacts")
+      .select("artifact_key")
+      .eq("user_id", userId);
+
+    if (error) {
+      console.error("Get owned artifacts error:", error);
+      return [];
+    }
+    return (data || []).map((a: { artifact_key: string }) => a.artifact_key);
+  }
+
+  async buyArtifactXP(userId: number, artifactKey: string, costXP: number): Promise<{ success: boolean }> {
+    // Check enough XP
     const { data: user } = await supabase
       .from("users")
       .select("total_xp")
@@ -490,10 +539,67 @@ export class MuseumAPI {
       .maybeSingle();
 
     const currentXP = user?.total_xp || 0;
+    if (currentXP < costXP) return { success: false };
+
+    // Spend XP atomically
+    await supabase.rpc("atomic_add_xp", { p_user_id: userId, p_xp: -costXP });
+
+    // Add artifact ownership
+    const { error } = await supabase
+      .from("tap_artifacts")
+      .insert([{ user_id: userId, artifact_key: artifactKey }]);
+
+    if (error) {
+      console.error("Buy artifact error:", error);
+      // Refund XP
+      await supabase.rpc("atomic_add_xp", { p_user_id: userId, p_xp: costXP });
+      return { success: false };
+    }
+
+    // Auto-equip the new artifact
     await supabase
-      .from("users")
-      .update({ total_xp: currentXP + xpToAdd })
-      .eq("id", userId);
+      .from("tap_game_state")
+      .update({ active_artifact: artifactKey, updated_at: new Date().toISOString() })
+      .eq("user_id", userId);
+
+    return { success: true };
+  }
+
+  async buyArtifactStars(userId: number, artifactKey: string): Promise<{ success: boolean }> {
+    // Called after Stars payment confirmed
+    const { error } = await supabase
+      .from("tap_artifacts")
+      .insert([{ user_id: userId, artifact_key: artifactKey }]);
+
+    if (error) {
+      console.error("Buy artifact stars error:", error);
+      return { success: false };
+    }
+
+    // Auto-equip
+    await supabase
+      .from("tap_game_state")
+      .update({ active_artifact: artifactKey, updated_at: new Date().toISOString() })
+      .eq("user_id", userId);
+
+    return { success: true };
+  }
+
+  async equipArtifact(userId: number, artifactKey: string): Promise<void> {
+    await supabase
+      .from("tap_game_state")
+      .update({ active_artifact: artifactKey, updated_at: new Date().toISOString() })
+      .eq("user_id", userId);
+  }
+
+  // ── XP (atomic via RPC) ────────────────────────────────────────────────────
+
+  private async addXPAtomic(userId: number, xpToAdd: number): Promise<void> {
+    const { error } = await supabase.rpc("atomic_add_xp", {
+      p_user_id: userId,
+      p_xp: xpToAdd,
+    });
+    if (error) console.error("Atomic add XP error:", error);
   }
 
   // ── Achievements ───────────────────────────────────────────────────────────
