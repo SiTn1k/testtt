@@ -142,3 +142,4 @@ export function triggerHapticFeedback(type: 'light' | 'medium' | 'heavy'): void 
     window.Telegram.WebApp.HapticFeedback.impactOccurred(type);
   }
 }
+
