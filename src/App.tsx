@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { initTelegram, getTelegramUser } from "./lib/telegram";
-import { museumAPI, TAP_LEVELS, MAX_TAP_LEVEL, BOOST_COST_STARS, BOOST_DURATION_MIN, TAP_ARTIFACTS } from "./lib/api";
-import type { UserStats, TapGameState, TapArtifact } from "./lib/api";
+import { museumAPI, TAP_LEVELS, MAX_TAP_LEVEL, AUTOCLICKER_OPTIONS, TAP_ARTIFACTS, STARTER_ARTIFACT } from "./lib/api";
+import type { UserStats, TapGameState, TapArtifact, AutoclikerOption } from "./lib/api";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Home as HomeIcon,
@@ -32,7 +32,6 @@ import {
   Award,
   Loader2,
   MousePointerClick,
-  Flame,
   ArrowUpCircle,
   Timer,
   ShoppingBag,
@@ -237,7 +236,7 @@ const ALL_ACHIEVEMENTS = [
 const TEXT: Record<Lang, any> = {
   ua: {
     home: { title: "Віртуальний Музей України", subtitle: "Подорож крізь тисячоліття історії", featured: "Рекомендовані", explore: "Досліджуйте", artifacts: "артефактів", viewAll: "Дивитись всі" },
-    tap: { title: "Тапалка", perClick: "XP за клік", totalTaps: "Всього тапів", level: "Рівень", upgrade: "Покращити", upgradeCost: "Вартість", maxLevel: "Макс рівень 5!", buyBoost: "x2 Буст", boostDesc: `${BOOST_DURATION_MIN} хв x2 за ${BOOST_COST_STARS} Stars`, boostActive: "x2 Активний!", boostTimeLeft: "Залишилось", notEnoughXP: "Недостатньо XP", noTable: "Таблиця tap_game_state не знайдена.", shop: "Прокачка", shopDesc: "Бонуси від усіх куплених артефактів складаються", buyXP: "Купити за XP", buyStars: "Купити за Stars", owned: "Куплено", equip: "Образ", equipped: "Образ", artifactBonus: "бонус" },
+    tap: { title: "Тапалка", perClick: "XP за клік", totalTaps: "Всього тапів", level: "Рівень", upgrade: "Покращити", upgradeCost: "Вартість", maxLevel: `Макс рівень ${MAX_TAP_LEVEL}!`, autoclicker: "Автоклікер", autoclickerActive: "Автоклікер!", autoclickerTimeLeft: "Залишилось", autoclickerBuy: "Купити автоклікер", autoclickerExtends: "Час додається до поточного", notEnoughXP: "Недостатньо XP", noTable: "Таблиця tap_game_state не знайдена.", shop: "Прокачка", shopDesc: "Бонуси від усіх куплених артефактів складаються", buyXP: "Купити за XP", buyStars: "Купити за Stars", owned: "Куплено", equip: "Образ", equipped: "Образ", artifactBonus: "бонус" },
     museum: { title: "Колекція", search: "Пошук артефактів...", all: "Всі" },
     timeline: { title: "Хронологія", subtitle: "Ключові події української історії" },
     profile: { title: "Профіль", rank: "Ранг", timeSpent: "Час у музеї", totalVisits: "Візитів", viewedArtifacts: "Переглянуто", achievements: "Досягнення", donations: "Донати", nextRank: "Наступний ранг" },
@@ -246,7 +245,7 @@ const TEXT: Record<Lang, any> = {
   },
   en: {
     home: { title: "Virtual Museum of Ukraine", subtitle: "Journey through millennia of history", featured: "Featured", explore: "Explore", artifacts: "artifacts", viewAll: "View all" },
-    tap: { title: "Tap Game", perClick: "XP per click", totalTaps: "Total taps", level: "Level", upgrade: "Upgrade", upgradeCost: "Cost", maxLevel: "Max Level 5!", buyBoost: "x2 Boost", boostDesc: `${BOOST_DURATION_MIN} min x2 for ${BOOST_COST_STARS} Stars`, boostActive: "x2 Active!", boostTimeLeft: "Time left", notEnoughXP: "Not enough XP", noTable: "tap_game_state table not found.", shop: "Upgrade Shop", shopDesc: "All purchased artifact bonuses stack", buyXP: "Buy for XP", buyStars: "Buy for Stars", owned: "Owned", equip: "Set Look", equipped: "Look", artifactBonus: "bonus" },
+    tap: { title: "Tap Game", perClick: "XP per click", totalTaps: "Total taps", level: "Level", upgrade: "Upgrade", upgradeCost: "Cost", maxLevel: `Max Level ${MAX_TAP_LEVEL}!`, autoclicker: "Autoclicker", autoclickerActive: "Autoclicker!", autoclickerTimeLeft: "Time left", autoclickerBuy: "Buy autoclicker", autoclickerExtends: "Time adds to current", notEnoughXP: "Not enough XP", noTable: "tap_game_state table not found.", shop: "Upgrade Shop", shopDesc: "All purchased artifact bonuses stack", buyXP: "Buy for XP", buyStars: "Buy for Stars", owned: "Owned", equip: "Set Look", equipped: "Look", artifactBonus: "bonus" },
     museum: { title: "Collection", search: "Search artifacts...", all: "All" },
     timeline: { title: "Timeline", subtitle: "Key events in Ukrainian history" },
     profile: { title: "Profile", rank: "Rank", timeSpent: "Time in Museum", totalVisits: "Visits", viewedArtifacts: "Artifacts Viewed", achievements: "Achievements", donations: "Donations", nextRank: "Next Rank" },
@@ -884,13 +883,15 @@ function TapScreen({ lang, dbUser, stats, onRefresh }: any) {
   const [taps, setTaps] = useState(0);
   const [floatingXPs, setFloatingXPs] = useState<{ id: number; x: number; y: number; value: string }[]>([]);
   const [isUpgrading, setIsUpgrading] = useState(false);
-  const [isBuyingBoost, setIsBuyingBoost] = useState(false);
+  const [isBuyingAutoclicker, setIsBuyingAutoclicker] = useState(false);
   const [upgradeMsg, setUpgradeMsg] = useState("");
   const tapIdRef = useRef(0);
   const [localXP, setLocalXP] = useState(stats?.totalXP || 0);
   const [ownedArtifacts, setOwnedArtifacts] = useState<string[]>([]);
   const [showShop, setShowShop] = useState(false);
+  const [showAutoclicker, setShowAutoclicker] = useState(false);
   const [buyingArtifact, setBuyingArtifact] = useState<string | null>(null);
+  const [autoclickerTimeLeft, setAutoclickerTimeLeft] = useState<string | null>(null);
 
   // Batch tap tracking — accumulate locally, flush to DB every 2 seconds
   const pendingTapsRef = useRef<{ count: number; totalXP: number }>({ count: 0, totalXP: 0 });
@@ -932,7 +933,6 @@ function TapScreen({ lang, dbUser, stats, onRefresh }: any) {
       await museumAPI.recordTapBatch(dbUser.id, batch.count, batch.totalXP);
     } catch (err) {
       console.error("Batch tap flush error:", err);
-      // Re-add on failure
       pendingTapsRef.current.count += batch.count;
       pendingTapsRef.current.totalXP += batch.totalXP;
     }
@@ -946,7 +946,51 @@ function TapScreen({ lang, dbUser, stats, onRefresh }: any) {
     };
   }, [flushTaps]);
 
-  // Refresh tap state periodically to check boost expiry
+  // Autoclicker tick — auto-tap every second when active
+  useEffect(() => {
+    const acUntil = tapState?.autoclicker_until;
+    if (!acUntil) {
+      setAutoclickerTimeLeft(null);
+      return;
+    }
+
+    const tick = () => {
+      const diff = new Date(acUntil).getTime() - Date.now();
+      if (diff <= 0) {
+        setAutoclickerTimeLeft(null);
+        return;
+      }
+      const hrs = Math.floor(diff / 3600000);
+      const mins = Math.floor((diff % 3600000) / 60000);
+      const secs = Math.floor((diff % 60000) / 1000);
+      if (hrs > 0) {
+        setAutoclickerTimeLeft(`${hrs}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`);
+      } else {
+        setAutoclickerTimeLeft(`${mins}:${secs.toString().padStart(2, "0")}`);
+      }
+    };
+
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [tapState?.autoclicker_until]);
+
+  // Autoclicker auto-tap every second
+  useEffect(() => {
+    const acUntil = tapState?.autoclicker_until;
+    if (!acUntil) return;
+
+    const interval = setInterval(() => {
+      if (new Date(acUntil).getTime() <= Date.now()) return;
+      // Trigger a tap programmatically
+      handleTap();
+    }, 1000);
+
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tapState?.autoclicker_until, dbUser]);
+
+  // Refresh tap state periodically
   useEffect(() => {
     if (!dbUser || !tapState) return;
     const interval = setInterval(async () => {
@@ -964,26 +1008,18 @@ function TapScreen({ lang, dbUser, stats, onRefresh }: any) {
           <X className="w-8 h-8 text-red-400 mx-auto mb-2" />
           <p className="text-sm text-red-300 leading-relaxed">{t.noTable}</p>
         </div>
-        <div className="bg-white/5 rounded-xl p-4 text-left w-full max-w-sm">
-          <p className="text-[10px] text-white/40 uppercase tracking-widest mb-2">SQL:</p>
-          <code className="text-[10px] text-[#ffd700] break-all leading-relaxed block">
-            CREATE TABLE tap_game_state (id BIGSERIAL PRIMARY KEY, user_id BIGINT NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE, tap_level SMALLINT NOT NULL DEFAULT 1, total_taps BIGINT NOT NULL DEFAULT 0, x2_boost_until TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW()); ALTER TABLE tap_game_state ENABLE ROW LEVEL SECURITY; CREATE POLICY "allow_all_tap_game" ON tap_game_state FOR ALL USING (true) WITH CHECK (true);
-          </code>
-        </div>
       </div>
     );
   }
 
   const levelConfig = TAP_LEVELS.find(l => l.level === (tapState?.tap_level || 1)) || TAP_LEVELS[0];
-  const x2Active = tapState?.x2_boost_until && new Date(tapState.x2_boost_until) > new Date();
 
-  // Sum bonuses from ALL owned artifacts (not just active) — buying any artifact permanently adds its bonus
+  // Sum bonuses from ALL owned artifacts (not just active)
   const totalArtifactBonus = TAP_ARTIFACTS
     .filter(a => ownedArtifacts.includes(a.key))
     .reduce((sum, a) => sum + a.xpBonus, 0);
 
-  const baseXP = levelConfig.xpPerTap + totalArtifactBonus;
-  const xpPerTap = x2Active ? baseXP * 2 : baseXP;
+  const xpPerTap = levelConfig.xpPerTap + totalArtifactBonus;
 
   // Active artifact determines tap area image only
   const activeArtifact = TAP_ARTIFACTS.find(a => a.key === tapState?.active_artifact);
@@ -1031,15 +1067,13 @@ function TapScreen({ lang, dbUser, stats, onRefresh }: any) {
     }
   };
 
-  const handleBuyBoost = async () => {
-    if (!dbUser || isBuyingBoost) return;
-    setIsBuyingBoost(true);
+  const handleBuyAutoclicker = async (option: AutoclikerOption) => {
+    if (!dbUser || isBuyingAutoclicker) return;
+    setIsBuyingAutoclicker(true);
 
     try {
       if (window.Telegram?.WebApp) {
         const WebApp = window.Telegram.WebApp;
-
-        // Create invoice via edge function to get a real invoice link
         const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
         const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
         const invoiceRes = await fetch(`${supabaseUrl}/functions/v1/stars-invoice`, {
@@ -1050,70 +1084,56 @@ function TapScreen({ lang, dbUser, stats, onRefresh }: any) {
             apikey: supabaseKey,
           },
           body: JSON.stringify({
-            title: lang === "ua" ? "x2 Буст Тапалки" : "Tap x2 Boost",
+            title: lang === "ua" ? `Автоклікер — ${option.label.ua}` : `Autoclicker — ${option.label.en}`,
             description: lang === "ua"
-              ? `${BOOST_DURATION_MIN} хвилин подвійного XP за тапи`
-              : `${BOOST_DURATION_MIN} minutes of double XP per tap`,
-            prices: [{ label: "x2 Boost", amount: BOOST_COST_STARS }],
-            payload: `boost_${dbUser.id}_${Date.now()}`,
+              ? `${option.label.ua} автоматичного тапання`
+              : `${option.label.en} of auto-tapping`,
+            prices: [{ label: option.label.en, amount: option.costStars }],
+            payload: `autoclicker_${option.key}_${dbUser.id}_${Date.now()}`,
           }),
         });
 
         if (!invoiceRes.ok) {
-          const errData = await invoiceRes.json().catch(() => ({}));
-          console.error("Invoice creation failed:", errData);
-          setIsBuyingBoost(false);
+          console.error("Invoice creation failed");
+          setIsBuyingAutoclicker(false);
           return;
         }
 
         const { invoice_link, error: invError } = await invoiceRes.json();
         if (invError || !invoice_link) {
           console.error("No invoice link:", invError);
-          setIsBuyingBoost(false);
+          setIsBuyingAutoclicker(false);
           return;
         }
 
-        // Open the invoice — Telegram shows Stars payment dialog
         WebApp.openInvoice(invoice_link, async (status: string) => {
           if (status === "paid") {
-            // Stars charged — activate boost + record donation
-            const result = await museumAPI.buyBoost(dbUser.id);
+            const result = await museumAPI.buyAutoclicker(dbUser.id, option.durationMin);
             if (result.success) {
-              setTapState(prev => prev ? { ...prev, x2_boost_until: result.boostUntil } : prev);
-              await museumAPI.createDonation(dbUser.id, BOOST_COST_STARS, "XTR", "telegram_stars_boost");
+              setTapState(prev => prev ? { ...prev, autoclicker_until: result.until } : prev);
+              await museumAPI.createDonation(dbUser.id, option.costStars, "XTR", `telegram_stars_autoclicker_${option.key}`);
               onRefresh();
               if (WebApp.HapticFeedback) {
                 WebApp.HapticFeedback.notificationOccurred("success");
               }
             }
           }
-          setIsBuyingBoost(false);
+          setIsBuyingAutoclicker(false);
         });
       } else {
-        // Outside Telegram — test mode
-        const result = await museumAPI.buyBoost(dbUser.id);
+        // Test mode outside Telegram
+        const result = await museumAPI.buyAutoclicker(dbUser.id, option.durationMin);
         if (result.success) {
-          setTapState(prev => prev ? { ...prev, x2_boost_until: result.boostUntil } : prev);
+          setTapState(prev => prev ? { ...prev, autoclicker_until: result.until } : prev);
           onRefresh();
         }
-        setIsBuyingBoost(false);
+        setIsBuyingAutoclicker(false);
       }
     } catch (err) {
-      console.error("Buy boost error:", err);
-      setIsBuyingBoost(false);
+      console.error("Buy autoclicker error:", err);
+      setIsBuyingAutoclicker(false);
     }
   };
-
-  const getBoostTimeLeft = () => {
-    if (!tapState?.x2_boost_until) return null;
-    const diff = new Date(tapState.x2_boost_until).getTime() - Date.now();
-    if (diff <= 0) return null;
-    const mins = Math.floor(diff / 60000);
-    const secs = Math.floor((diff % 60000) / 1000);
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
-  };
-
-  const boostTimeLeft = getBoostTimeLeft();
 
   // Buy artifact for XP
   const handleBuyArtifactXP = async (artifact: TapArtifact) => {
@@ -1157,7 +1177,7 @@ function TapScreen({ lang, dbUser, stats, onRefresh }: any) {
           },
           body: JSON.stringify({
             title: artifact.name[lang as "ua" | "en"],
-            description: artifact.description[lang as "ua" | "en"],
+            description: `${artifact.name[lang as "ua" | "en"]} — +${artifact.xpBonus} XP bonus`,
             prices: [{ label: artifact.name.en, amount: artifact.costStars }],
             payload: `artifact_${artifact.key}_${dbUser.id}_${Date.now()}`,
           }),
@@ -1238,17 +1258,17 @@ function TapScreen({ lang, dbUser, stats, onRefresh }: any) {
         </GlassCard>
       </div>
 
-      {/* x2 Boost Banner */}
-      {x2Active && boostTimeLeft && (
+      {/* Autoclicker Banner */}
+      {autoclickerTimeLeft && (
         <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}>
-          <GlassCard className="p-3 flex items-center justify-between bg-gradient-to-r from-[#ffd700]/10 to-transparent border-[#ffd700]/20">
+          <GlassCard className="p-3 flex items-center justify-between bg-gradient-to-r from-[#0057b7]/10 to-transparent border-[#0057b7]/20">
             <div className="flex items-center gap-2">
-              <Flame className="w-5 h-5 text-[#ffd700] animate-pulse" />
-              <span className="text-sm font-bold text-[#ffd700]">{t.boostActive}</span>
+              <Zap className="w-5 h-5 text-[#0057b7] animate-pulse" />
+              <span className="text-sm font-bold text-[#0057b7]">{t.autoclickerActive}</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <Timer className="w-3.5 h-3.5 text-[#ffd700]/60" />
-              <span className="text-sm font-mono font-bold text-[#ffd700]">{boostTimeLeft}</span>
+              <Timer className="w-3.5 h-3.5 text-[#0057b7]/60" />
+              <span className="text-sm font-mono font-bold text-[#0057b7]">{autoclickerTimeLeft}</span>
             </div>
           </GlassCard>
         </motion.div>
@@ -1354,26 +1374,47 @@ function TapScreen({ lang, dbUser, stats, onRefresh }: any) {
           </motion.div>
         )}
 
-        {/* Buy Boost Button */}
-        {!x2Active && (
-          <motion.button
-            whileTap={{ scale: 0.97 }}
-            onClick={handleBuyBoost}
-            disabled={isBuyingBoost}
-            className="w-full p-4 rounded-2xl bg-gradient-to-r from-[#ffd700]/20 to-[#ffd700]/5 border border-[#ffd700]/20 flex items-center justify-between hover:from-[#ffd700]/30 transition-colors disabled:opacity-50"
-          >
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-[#ffd700]/20 rounded-xl">
-                <Flame className="w-6 h-6 text-[#ffd700]" />
-              </div>
-              <div className="text-left">
-                <div className="text-[#ffd700] font-bold text-sm">{t.buyBoost}</div>
-                <div className="text-[#ffd700]/50 text-[10px]">{t.boostDesc}</div>
-              </div>
+        {/* Autoclicker Toggle */}
+        <motion.button
+          whileTap={{ scale: 0.97 }}
+          onClick={() => setShowAutoclicker(!showAutoclicker)}
+          className="w-full p-4 rounded-2xl bg-gradient-to-r from-[#0057b7]/20 to-[#0057b7]/5 border border-[#0057b7]/20 flex items-center justify-between hover:from-[#0057b7]/30 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-[#0057b7]/20 rounded-xl">
+              <Zap className="w-6 h-6 text-[#0057b7]" />
             </div>
-            {isBuyingBoost ? <Loader2 className="w-5 h-5 text-[#ffd700] animate-spin" /> : <ChevronRight className="w-5 h-5 text-[#ffd700]/40" />}
-          </motion.button>
-        )}
+            <div className="text-left">
+              <div className="text-white font-bold text-sm">{t.autoclicker}</div>
+              <div className="text-white/40 text-[10px]">{t.autoclickerExtends}</div>
+            </div>
+          </div>
+          <ChevronRight className={`w-5 h-5 text-white/40 transition-transform ${showAutoclicker ? "rotate-90" : ""}`} />
+        </motion.button>
+
+        {/* Autoclicker Options */}
+        <AnimatePresence>
+          {showAutoclicker && (
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+              <div className="grid grid-cols-2 gap-2 pt-2">
+                {AUTOCLICKER_OPTIONS.map((option) => (
+                  <motion.button
+                    key={option.key}
+                    whileTap={{ scale: 0.97 }}
+                    onClick={() => handleBuyAutoclicker(option)}
+                    disabled={isBuyingAutoclicker}
+                    className="p-3 rounded-2xl bg-white/[0.03] border border-white/5 flex flex-col items-center gap-1.5 hover:bg-white/[0.06] transition-colors disabled:opacity-50"
+                  >
+                    <Timer className="w-5 h-5 text-[#0057b7]" />
+                    <span className="text-white font-bold text-xs">{option.label[lang as "ua" | "en"]}</span>
+                    <span className="text-[10px] font-bold text-white/50">{option.costStars} ★</span>
+                    {isBuyingAutoclicker && <Loader2 className="w-3 h-3 animate-spin text-white/50" />}
+                  </motion.button>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Upgrade Shop Toggle */}
         <motion.button
