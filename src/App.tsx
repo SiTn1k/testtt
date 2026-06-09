@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { initTelegram, getTelegramUser } from "./lib/telegram";
-import { museumAPI, TAP_LEVELS, BOOST_COST_STARS, BOOST_DURATION_MIN, TAP_ARTIFACTS } from "./lib/api";
+import { museumAPI, TAP_LEVELS, MAX_TAP_LEVEL, BOOST_COST_STARS, BOOST_DURATION_MIN, TAP_ARTIFACTS } from "./lib/api";
 import type { UserStats, TapGameState, TapArtifact } from "./lib/api";
 import { motion, AnimatePresence } from "motion/react";
 import {
@@ -237,7 +237,7 @@ const ALL_ACHIEVEMENTS = [
 const TEXT: Record<Lang, any> = {
   ua: {
     home: { title: "Віртуальний Музей України", subtitle: "Подорож крізь тисячоліття історії", featured: "Рекомендовані", explore: "Досліджуйте", artifacts: "артефактів", viewAll: "Дивитись всі" },
-    tap: { title: "Тапалка", perClick: "XP за клік", totalTaps: "Всього тапів", level: "Рівень", upgrade: "Покращити", upgradeCost: "Вартість", maxLevel: "Макс рівень!", buyBoost: "x2 Буст", boostDesc: `${BOOST_DURATION_MIN} хв x2 за ${BOOST_COST_STARS} Stars`, boostActive: "x2 Активний!", boostTimeLeft: "Залишилось", notEnoughXP: "Недостатньо XP", noTable: "Таблиця tap_game_state не знайдена. Створіть її в Supabase Dashboard → SQL Editor", shop: "Прокачка", shopDesc: "Купуй артефакти для більшого XP", buyXP: "Купити за XP", buyStars: "Купити за Stars", owned: "Куплено", equip: "Встановити", equipped: "Активний", artifactBonus: "бонус" },
+    tap: { title: "Тапалка", perClick: "XP за клік", totalTaps: "Всього тапів", level: "Рівень", upgrade: "Покращити", upgradeCost: "Вартість", maxLevel: "Макс рівень 5!", buyBoost: "x2 Буст", boostDesc: `${BOOST_DURATION_MIN} хв x2 за ${BOOST_COST_STARS} Stars`, boostActive: "x2 Активний!", boostTimeLeft: "Залишилось", notEnoughXP: "Недостатньо XP", noTable: "Таблиця tap_game_state не знайдена.", shop: "Прокачка", shopDesc: "Бонуси від усіх куплених артефактів складаються", buyXP: "Купити за XP", buyStars: "Купити за Stars", owned: "Куплено", equip: "Образ", equipped: "Образ", artifactBonus: "бонус" },
     museum: { title: "Колекція", search: "Пошук артефактів...", all: "Всі" },
     timeline: { title: "Хронологія", subtitle: "Ключові події української історії" },
     profile: { title: "Профіль", rank: "Ранг", timeSpent: "Час у музеї", totalVisits: "Візитів", viewedArtifacts: "Переглянуто", achievements: "Досягнення", donations: "Донати", nextRank: "Наступний ранг" },
@@ -246,7 +246,7 @@ const TEXT: Record<Lang, any> = {
   },
   en: {
     home: { title: "Virtual Museum of Ukraine", subtitle: "Journey through millennia of history", featured: "Featured", explore: "Explore", artifacts: "artifacts", viewAll: "View all" },
-    tap: { title: "Tap Game", perClick: "XP per click", totalTaps: "Total taps", level: "Level", upgrade: "Upgrade", upgradeCost: "Cost", maxLevel: "Max Level!", buyBoost: "x2 Boost", boostDesc: `${BOOST_DURATION_MIN} min x2 for ${BOOST_COST_STARS} Stars`, boostActive: "x2 Active!", boostTimeLeft: "Time left", notEnoughXP: "Not enough XP", noTable: "tap_game_state table not found. Create it in Supabase Dashboard → SQL Editor", shop: "Upgrade Shop", shopDesc: "Buy artifacts for more XP", buyXP: "Buy for XP", buyStars: "Buy for Stars", owned: "Owned", equip: "Equip", equipped: "Active", artifactBonus: "bonus" },
+    tap: { title: "Tap Game", perClick: "XP per click", totalTaps: "Total taps", level: "Level", upgrade: "Upgrade", upgradeCost: "Cost", maxLevel: "Max Level 5!", buyBoost: "x2 Boost", boostDesc: `${BOOST_DURATION_MIN} min x2 for ${BOOST_COST_STARS} Stars`, boostActive: "x2 Active!", boostTimeLeft: "Time left", notEnoughXP: "Not enough XP", noTable: "tap_game_state table not found.", shop: "Upgrade Shop", shopDesc: "All purchased artifact bonuses stack", buyXP: "Buy for XP", buyStars: "Buy for Stars", owned: "Owned", equip: "Set Look", equipped: "Look", artifactBonus: "bonus" },
     museum: { title: "Collection", search: "Search artifacts...", all: "All" },
     timeline: { title: "Timeline", subtitle: "Key events in Ukrainian history" },
     profile: { title: "Profile", rank: "Rank", timeSpent: "Time in Museum", totalVisits: "Visits", viewedArtifacts: "Artifacts Viewed", achievements: "Achievements", donations: "Donations", nextRank: "Next Rank" },
@@ -896,9 +896,11 @@ function TapScreen({ lang, dbUser, stats, onRefresh }: any) {
   const pendingTapsRef = useRef<{ count: number; totalXP: number }>({ count: 0, totalXP: 0 });
   const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Keep localXP in sync with stats prop
+  // Keep localXP in sync with stats — but add pending taps' XP so they don't get wiped
   useEffect(() => {
-    if (stats?.totalXP !== undefined) setLocalXP(stats.totalXP);
+    if (stats?.totalXP !== undefined) {
+      setLocalXP(stats.totalXP + pendingTapsRef.current.totalXP);
+    }
   }, [stats?.totalXP]);
 
   // Load tap state + owned artifacts
@@ -972,12 +974,19 @@ function TapScreen({ lang, dbUser, stats, onRefresh }: any) {
     );
   }
 
-  const activeArtifact = TAP_ARTIFACTS.find(a => a.key === tapState?.active_artifact);
-  const activeBonus = activeArtifact?.xpBonus || 0;
   const levelConfig = TAP_LEVELS.find(l => l.level === (tapState?.tap_level || 1)) || TAP_LEVELS[0];
   const x2Active = tapState?.x2_boost_until && new Date(tapState.x2_boost_until) > new Date();
-  const baseXP = levelConfig.xpPerTap + activeBonus;
+
+  // Sum bonuses from ALL owned artifacts (not just active) — buying any artifact permanently adds its bonus
+  const totalArtifactBonus = TAP_ARTIFACTS
+    .filter(a => ownedArtifacts.includes(a.key))
+    .reduce((sum, a) => sum + a.xpBonus, 0);
+
+  const baseXP = levelConfig.xpPerTap + totalArtifactBonus;
   const xpPerTap = x2Active ? baseXP * 2 : baseXP;
+
+  // Active artifact determines tap area image only
+  const activeArtifact = TAP_ARTIFACTS.find(a => a.key === tapState?.active_artifact);
 
   const handleTap = async () => {
     if (!dbUser || !tapState) return;
@@ -1000,9 +1009,10 @@ function TapScreen({ lang, dbUser, stats, onRefresh }: any) {
   };
 
   const handleUpgrade = async () => {
-    if (!dbUser || !tapState || tapState.tap_level >= 3 || isUpgrading) return;
+    if (!dbUser || !tapState || tapState.tap_level >= MAX_TAP_LEVEL || isUpgrading) return;
     setIsUpgrading(true);
     setUpgradeMsg("");
+    await flushTaps();
 
     try {
       const result = await museumAPI.upgradeTapLevel(dbUser.id);
@@ -1109,6 +1119,8 @@ function TapScreen({ lang, dbUser, stats, onRefresh }: any) {
   const handleBuyArtifactXP = async (artifact: TapArtifact) => {
     if (!dbUser || buyingArtifact) return;
     setBuyingArtifact(artifact.key);
+    // Flush buffered taps first so DB has up-to-date XP before spending
+    await flushTaps();
     try {
       const result = await museumAPI.buyArtifactXP(dbUser.id, artifact.key, artifact.costXP);
       if (result.success) {
@@ -1295,34 +1307,40 @@ function TapScreen({ lang, dbUser, stats, onRefresh }: any) {
       {/* Action Buttons */}
       <div className="space-y-3 px-1">
         {/* Upgrade Button */}
-        {tapState && tapState.tap_level < 3 ? (
-          <motion.button
-            whileTap={{ scale: 0.97 }}
-            onClick={handleUpgrade}
-            disabled={isUpgrading}
-            className="w-full p-4 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between hover:bg-white/10 transition-colors disabled:opacity-50"
-          >
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-[#0057b7]/20 rounded-xl">
-                <ArrowUpCircle className="w-6 h-6 text-[#0057b7]" />
-              </div>
-              <div className="text-left">
-                <div className="text-white font-bold text-sm">
-                  {t.upgrade} → {t.level} {(tapState.tap_level || 1) + 1}
+        {tapState && tapState.tap_level < MAX_TAP_LEVEL ? (() => {
+          // upgradeCostXP on the CURRENT level = how much it costs to leave it
+          const upgradeCost = TAP_LEVELS.find(l => l.level === tapState.tap_level)?.upgradeCostXP ?? 0;
+          const nextLevelXP  = TAP_LEVELS.find(l => l.level === tapState.tap_level + 1)?.xpPerTap ?? 0;
+          const canAfford = localXP >= upgradeCost;
+          return (
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              onClick={handleUpgrade}
+              disabled={isUpgrading || !canAfford}
+              className={`w-full p-4 rounded-2xl border flex items-center justify-between transition-colors disabled:opacity-50 ${canAfford ? "bg-white/5 border-white/10 hover:bg-white/10" : "bg-white/[0.02] border-white/5"}`}
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-[#0057b7]/20 rounded-xl">
+                  <ArrowUpCircle className="w-6 h-6 text-[#0057b7]" />
                 </div>
-                <div className="text-white/40 text-[10px]">
-                  {TAP_LEVELS.find(l => l.level === (tapState.tap_level || 1) + 1)?.xpPerTap} XP/{lang === "ua" ? "клік" : "click"}
+                <div className="text-left">
+                  <div className="text-white font-bold text-sm">
+                    {t.upgrade} → {t.level} {tapState.tap_level + 1} / {MAX_TAP_LEVEL}
+                  </div>
+                  <div className="text-white/40 text-[10px]">
+                    {nextLevelXP} XP/{lang === "ua" ? "клік" : "click"} {lang === "ua" ? "(базово)" : "(base)"}
+                  </div>
                 </div>
               </div>
-            </div>
-            <div className="text-right">
-              <div className="text-[#ffd700] font-bold text-sm">
-                {TAP_LEVELS.find(l => l.level === (tapState.tap_level || 1) + 1)?.upgradeCostXP} XP
+              <div className="text-right">
+                <div className={`font-bold text-sm ${canAfford ? "text-[#ffd700]" : "text-white/30"}`}>
+                  {upgradeCost} XP
+                </div>
+                <div className="text-white/30 text-[10px]">{t.upgradeCost}</div>
               </div>
-              <div className="text-white/30 text-[10px]">{t.upgradeCost}</div>
-            </div>
-          </motion.button>
-        ) : (
+            </motion.button>
+          );
+        })() : (
           <GlassCard className="p-4 flex items-center justify-center gap-2" hover={false}>
             <Crown className="w-5 h-5 text-[#ffd700]" />
             <span className="text-[#ffd700] font-bold text-sm">{t.maxLevel}</span>
@@ -1379,7 +1397,14 @@ function TapScreen({ lang, dbUser, stats, onRefresh }: any) {
         <AnimatePresence>
           {showShop && (
             <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-              <div className="space-y-2 pt-2">
+              {/* Bonus summary */}
+              {totalArtifactBonus > 0 && (
+                <div className="mb-2 px-1 py-2 rounded-xl bg-[#ffd700]/5 border border-[#ffd700]/15 flex items-center justify-between">
+                  <span className="text-[10px] text-white/50">{lang === "ua" ? "Сумарний бонус артефактів" : "Total artifact bonus"}</span>
+                  <span className="text-[#ffd700] font-black text-sm">+{totalArtifactBonus} XP/{lang === "ua" ? "клік" : "tap"}</span>
+                </div>
+              )}
+              <div className="space-y-2 pt-1">
                 {TAP_ARTIFACTS.map((artifact) => {
                   const owned = ownedArtifacts.includes(artifact.key);
                   const equipped = tapState?.active_artifact === artifact.key;
@@ -1387,19 +1412,32 @@ function TapScreen({ lang, dbUser, stats, onRefresh }: any) {
 
                   return (
                     <div key={artifact.key} className={`p-3 rounded-2xl border flex items-center gap-3 transition-colors ${owned ? "bg-[#ffd700]/5 border-[#ffd700]/20" : "bg-white/[0.03] border-white/5"}`}>
-                      <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0">
-                        <img src={artifact.image} alt={artifact.name[lang as "ua" | "en"]} className="w-full h-full object-cover" />
+                      <div className="relative w-14 h-14 rounded-xl overflow-hidden flex-shrink-0">
+                        <img
+                          src={artifact.image}
+                          alt={artifact.name[lang as "ua" | "en"]}
+                          className="w-full h-full object-cover"
+                          onError={(e) => { (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1561542320-ec5c88087ab4?w=200&h=200&fit=crop"; }}
+                        />
+                        {owned && (
+                          <div className="absolute inset-0 bg-[#ffd700]/20 flex items-center justify-center">
+                            <CheckCircle2 className="w-5 h-5 text-[#ffd700]" />
+                          </div>
+                        )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="text-white font-bold text-xs truncate">{artifact.name[lang as "ua" | "en"]}</div>
                         <div className="text-[#ffd700] text-[10px] font-bold">+{artifact.xpBonus} XP/{lang === "ua" ? "клік" : "click"}</div>
+                        {owned && (
+                          <div className="text-[#4ade80] text-[9px] font-semibold mt-0.5">{lang === "ua" ? "▲ активний бонус" : "▲ bonus active"}</div>
+                        )}
                       </div>
                       <div className="flex-shrink-0">
                         {owned ? (
                           equipped ? (
-                            <span className="text-[10px] font-bold text-[#ffd700] bg-[#ffd700]/10 px-3 py-1.5 rounded-lg">{t.equipped}</span>
+                            <span className="text-[10px] font-bold text-[#ffd700] bg-[#ffd700]/10 px-2 py-1.5 rounded-lg">{t.equipped}</span>
                           ) : (
-                            <motion.button whileTap={{ scale: 0.95 }} onClick={() => handleEquipArtifact(artifact.key)} className="text-[10px] font-bold text-white bg-[#0057b7] px-3 py-1.5 rounded-lg">
+                            <motion.button whileTap={{ scale: 0.95 }} onClick={() => handleEquipArtifact(artifact.key)} className="text-[10px] font-bold text-white bg-[#0057b7] px-2 py-1.5 rounded-lg">
                               {t.equip}
                             </motion.button>
                           )
@@ -1410,9 +1448,9 @@ function TapScreen({ lang, dbUser, stats, onRefresh }: any) {
                                 whileTap={{ scale: 0.95 }}
                                 onClick={() => handleBuyArtifactXP(artifact)}
                                 disabled={buyingArtifact !== null || !canAffordXP}
-                                className={`text-[10px] font-bold px-3 py-1.5 rounded-lg ${canAffordXP ? "text-[#ffd700] bg-[#ffd700]/10 hover:bg-[#ffd700]/20" : "text-white/30 bg-white/5"} disabled:opacity-50`}
+                                className={`text-[10px] font-bold px-2 py-1.5 rounded-lg ${canAffordXP ? "text-[#ffd700] bg-[#ffd700]/10 hover:bg-[#ffd700]/20" : "text-white/30 bg-white/5"} disabled:opacity-50`}
                               >
-                                {artifact.costXP} XP
+                                {buyingArtifact === artifact.key ? <Loader2 className="w-3 h-3 animate-spin" /> : `${artifact.costXP} XP`}
                               </motion.button>
                             )}
                             {artifact.costStars > 0 && (
@@ -1420,9 +1458,9 @@ function TapScreen({ lang, dbUser, stats, onRefresh }: any) {
                                 whileTap={{ scale: 0.95 }}
                                 onClick={() => handleBuyArtifactStars(artifact)}
                                 disabled={buyingArtifact !== null}
-                                className="text-[10px] font-bold text-white bg-[#0088cc] px-3 py-1.5 rounded-lg hover:bg-[#0099dd] disabled:opacity-50"
+                                className="text-[10px] font-bold text-white bg-[#0088cc] px-2 py-1.5 rounded-lg hover:bg-[#0099dd] disabled:opacity-50"
                               >
-                                {artifact.costStars} Stars
+                                {buyingArtifact === artifact.key ? <Loader2 className="w-3 h-3 animate-spin" /> : `${artifact.costStars} ★`}
                               </motion.button>
                             )}
                           </div>
