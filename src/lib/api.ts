@@ -32,10 +32,13 @@ export interface TapGameState {
 }
 
 export const TAP_LEVELS = [
-  { level: 1, xpPerTap: 1, upgradeCostXP: 100, label: { ua: "Рівень 1", en: "Level 1" } },
-  { level: 2, xpPerTap: 2, upgradeCostXP: 500, label: { ua: "Рівень 2", en: "Level 2" } },
-  { level: 3, xpPerTap: 3, upgradeCostXP: 2000, label: { ua: "Рівень 3 (Макс)", en: "Level 3 (Max)" } },
+  { level: 1, xpPerTap: 1,  upgradeCostXP: 100,   label: { ua: "Рівень 1",        en: "Level 1"         } },
+  { level: 2, xpPerTap: 2,  upgradeCostXP: 500,   label: { ua: "Рівень 2",        en: "Level 2"         } },
+  { level: 3, xpPerTap: 4,  upgradeCostXP: 2000,  label: { ua: "Рівень 3",        en: "Level 3"         } },
+  { level: 4, xpPerTap: 7,  upgradeCostXP: 6000,  label: { ua: "Рівень 4",        en: "Level 4"         } },
+  { level: 5, xpPerTap: 12, upgradeCostXP: 0,     label: { ua: "Рівень 5 (Макс)", en: "Level 5 (Max)"   } },
 ];
+export const MAX_TAP_LEVEL = 5;
 
 export const BOOST_COST_STARS = 25;
 export const BOOST_DURATION_MIN = 15;
@@ -59,16 +62,18 @@ export const TAP_ARTIFACTS: TapArtifact[] = [
     xpBonus: 2,
     costXP: 300,
     costStars: 0,
-    image: "https://images.unsplash.com/photo-1621939514649-280e2ee25f60?w=200&h=200&fit=crop",
+    // Підтверджено: золото-куполи Лаври
+    image: "https://images.unsplash.com/photo-1561542320-ec5c88087ab4?w=200&h=200&fit=crop",
   },
   {
     key: "cossack_saber",
     name: { ua: "Козацька Шабля", en: "Cossack Saber" },
-    description: { ua: "Шабля запорізького козака +3 XP/клік", en: "Saber of a Zaporizhian Cossack +3 XP/click" },
-    xpBonus: 3,
+    description: { ua: "Шабля запорізького козака +4 XP/клік", en: "Saber of a Zaporizhian Cossack +4 XP/click" },
+    xpBonus: 4,
     costXP: 800,
     costStars: 0,
-    image: "https://images.unsplash.com/photo-1595437111809-3b0ac8707b27?w=200&h=200&fit=crop",
+    // Підтверджено: козацька доба (фото із колекції)
+    image: "https://images.unsplash.com/photo-1766081816102-e8d70da3a2b1?w=200&h=200&fit=crop",
   },
   {
     key: "vyshyvanka_amulet",
@@ -77,6 +82,7 @@ export const TAP_ARTIFACTS: TapArtifact[] = [
     xpBonus: 5,
     costXP: 0,
     costStars: 50,
+    // Підтверджено: вишиванка
     image: "https://images.unsplash.com/photo-1655678204995-0e1eb3d2fdbc?w=200&h=200&fit=crop",
   },
   {
@@ -86,24 +92,47 @@ export const TAP_ARTIFACTS: TapArtifact[] = [
     xpBonus: 7,
     costXP: 0,
     costStars: 100,
+    // Підтверджено: писанка
     image: "https://images.unsplash.com/photo-1617191574040-c57e8af59ddb?w=200&h=200&fit=crop",
+  },
+  {
+    key: "bandura_relic",
+    name: { ua: "Бандура Кобзаря", en: "Kobzar's Bandura" },
+    description: { ua: "Магічна бандура кобзаря +9 XP/клік", en: "Magical kobzar bandura +9 XP/click" },
+    xpBonus: 9,
+    costXP: 2500,
+    costStars: 0,
+    // Підтверджено: бандура
+    image: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=200&h=200&fit=crop",
   },
   {
     key: "golden_crown",
     name: { ua: "Золота Корона", en: "Golden Crown" },
-    description: { ua: "Корона Ярослава Мудрого +10 XP/клік", en: "Crown of Yaroslav the Wise +10 XP/click" },
-    xpBonus: 10,
-    costXP: 3000,
+    description: { ua: "Корона Ярослава Мудрого +12 XP/клік", en: "Crown of Yaroslav the Wise +12 XP/click" },
+    xpBonus: 12,
+    costXP: 5000,
     costStars: 0,
-    image: "https://images.unsplash.com/photo-1596181938181-6a00051c5746?w=200&h=200&fit=crop",
+    // Підтверджено: Собор Святої Софії (золоті куполи)
+    image: "https://images.unsplash.com/photo-1770112095032-693a32cace1d?w=200&h=200&fit=crop",
+  },
+  {
+    key: "petrykivka_brush",
+    name: { ua: "Пензель Петриківки", en: "Petrykivka Brush" },
+    description: { ua: "Чарівний пензель народного розпису +15 XP/клік", en: "Magical folk art brush +15 XP/click" },
+    xpBonus: 15,
+    costXP: 0,
+    costStars: 200,
+    // Підтверджено: петриківський розпис
+    image: "https://images.unsplash.com/photo-1705769945723-10ecbe1f7df8?w=200&h=200&fit=crop",
   },
   {
     key: "trident_relic",
     name: { ua: "Реліквія Тризуба", en: "Trident Relic" },
-    description: { ua: "Священна реліквія України +15 XP/клік", en: "Sacred relic of Ukraine +15 XP/click" },
-    xpBonus: 15,
+    description: { ua: "Священна реліквія України +20 XP/клік", en: "Sacred relic of Ukraine +20 XP/click" },
+    xpBonus: 20,
     costXP: 0,
-    costStars: 200,
+    costStars: 350,
+    // Підтверджено: Київ
     image: "https://images.unsplash.com/photo-1605991362090-47188b84d40a?w=200&h=200&fit=crop",
   },
 ];
@@ -471,14 +500,15 @@ export class MuseumAPI {
     const state = await this.getTapState(userId);
     if (!state) throw new Error("Tap state not found");
 
-    if (state.tap_level >= 3) return { success: false, newLevel: 3, xpSpent: 0 };
+    if (state.tap_level >= MAX_TAP_LEVEL) return { success: false, newLevel: MAX_TAP_LEVEL, xpSpent: 0 };
+
+    // upgradeCostXP on the CURRENT level = cost to leave that level (go to next)
+    const currentConfig = TAP_LEVELS.find(l => l.level === state.tap_level);
+    if (!currentConfig || !currentConfig.upgradeCostXP) return { success: false, newLevel: state.tap_level, xpSpent: 0 };
 
     const nextLevel = state.tap_level + 1;
-    const nextConfig = TAP_LEVELS.find(l => l.level === nextLevel);
-    if (!nextConfig || !nextConfig.upgradeCostXP) return { success: false, newLevel: state.tap_level, xpSpent: 0 };
+    const costXP = currentConfig.upgradeCostXP;
 
-    // Atomic: subtract XP and upgrade level in one go
-    // First check if enough XP
     const { data: user } = await supabase
       .from("users")
       .select("total_xp")
@@ -486,17 +516,16 @@ export class MuseumAPI {
       .maybeSingle();
 
     const currentXP = user?.total_xp || 0;
-    if (currentXP < nextConfig.upgradeCostXP) return { success: false, newLevel: state.tap_level, xpSpent: 0 };
+    if (currentXP < costXP) return { success: false, newLevel: state.tap_level, xpSpent: 0 };
 
-    // Use negative atomic increment to spend XP
-    await supabase.rpc("atomic_add_xp", { p_user_id: userId, p_xp: -nextConfig.upgradeCostXP });
+    await supabase.rpc("atomic_add_xp", { p_user_id: userId, p_xp: -costXP });
 
     await supabase
       .from("tap_game_state")
       .update({ tap_level: nextLevel, updated_at: new Date().toISOString() })
       .eq("user_id", userId);
 
-    return { success: true, newLevel: nextLevel, xpSpent: nextConfig.upgradeCostXP };
+    return { success: true, newLevel: nextLevel, xpSpent: costXP };
   }
 
   async buyBoost(userId: number): Promise<{ success: boolean; boostUntil: string | null }> {
