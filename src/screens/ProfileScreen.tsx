@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import type { LucideIcon } from "lucide-react";
 import { motion } from "motion/react";
 import {
   Zap, Star, Trophy, Clock, Landmark, ImageIcon,
@@ -23,7 +24,24 @@ import {
   type UserStats,
 } from "../lib/api";
 
-const ALL_ACHIEVEMENTS = [
+interface TelegramUserData {
+  id: number;
+  first_name: string;
+  last_name?: string;
+  username?: string;
+  language_code?: string;
+  photo_url?: string;
+  is_premium?: boolean;
+}
+
+interface DbUser {
+  id: string;
+  telegram_id: number;
+  xp: number;
+  level: number;
+}
+
+const ALL_ACHIEVEMENTS: Array<{ key: string; icon: LucideIcon; ua: string; en: string; color: string }> = [
   { key: "FIRST_VISIT", icon: Award, ua: "Перший візит", en: "First Visit", color: "#ffd700" },
   { key: "FIRST_ARTIFACT_VIEW", icon: Landmark, ua: "Перший артефакт", en: "First Artifact", color: "#3b82f6" },
   { key: "ONE_HOUR", icon: Clock, ua: "Година в музеї", en: "One Hour", color: "#0057b7" },
@@ -48,7 +66,7 @@ export function ProfileScreen({
   lang, setLang, telegramUser, dbUser, stats, onRefresh, sessionStartIso,
 }: {
   lang: "ua" | "en"; setLang: (l: "ua" | "en") => void;
-  telegramUser: any; dbUser: any; stats: UserStats | null;
+  telegramUser: TelegramUserData | null; dbUser: DbUser | null; stats: UserStats | null;
   onRefresh: () => void; sessionStartIso: string | null;
 }) {
   const [tab, setTab] = useState<ProfileTab>("main");
@@ -305,7 +323,7 @@ export function ProfileScreen({
 
 // ── Daily Rewards Sub-screen ────────────────────────────────────────────────────
 
-function DailyRewardsScreen({ lang, onBack, streak, todayClaim, onClaim }: any) {
+function DailyRewardsScreen({ lang, onBack, streak, todayClaim, onClaim }: { lang: "ua" | "en"; onBack: () => void; streak: DailyStreak | null; todayClaim: DailyClaim | null; onClaim: () => void }) {
   const t: { title: string; streak: string; longest: string; claim: string; claimed: string; day: string } = {
     ua: { title: "Щоденні нагороди", streak: "Серія", longest: "Найкраща серія", claim: "Забрати нагороду", claimed: "Отримано сьогодні", day: "День" },
     en: { title: "Daily Rewards", streak: "Streak", longest: "Longest Streak", claim: "Claim Reward", claimed: "Claimed today", day: "Day" },
@@ -376,7 +394,7 @@ function DailyRewardsScreen({ lang, onBack, streak, todayClaim, onClaim }: any) 
 
 // ── Referral Sub-screen ─────────────────────────────────────────────────────────
 
-function ReferralScreen({ lang, onBack, stats, dbUser }: any) {
+function ReferralScreen({ lang, onBack, stats, dbUser }: { lang: "ua" | "en"; onBack: () => void; stats: ReferralStats | null; dbUser: DbUser | null }) {
   const t: { title: string; invited: string; link: string; copy: string; copied: string; nextReward: string; milestones: string; rewards: string } = {
     ua: { title: "Реферали", invited: "Запрошено", link: "Ваше реферальне посилання", copy: "Копіювати", copied: "Скопійовано!", nextReward: "Наступна нагорода", milestones: "Етапи", rewards: "Отримані нагороди" },
     en: { title: "Referrals", invited: "Invited", link: "Your referral link", copy: "Copy", copied: "Copied!", nextReward: "Next Reward", milestones: "Milestones", rewards: "Received Rewards" },
@@ -434,7 +452,7 @@ function ReferralScreen({ lang, onBack, stats, dbUser }: any) {
         <h3 className="text-xs font-bold text-white/50 uppercase tracking-wider">{t.milestones}</h3>
         {REFERRAL_MILESTONES.map((ms) => {
           const achieved = (stats?.invitedCount || 0) >= ms.count;
-          const rewardClaimed = stats?.rewards?.some((r: any) => r.milestone === ms.count);
+          const rewardClaimed = stats?.rewards?.some((r: { milestone: number }) => r.milestone === ms.count);
           return (
             <GlassCard key={ms.count} className={`p-4 ${achieved ? "border-[#ffd700]/20" : "opacity-60"}`}>
               <div className="flex items-center gap-4">
@@ -457,7 +475,7 @@ function ReferralScreen({ lang, onBack, stats, dbUser }: any) {
 
 // ── Leaderboard Sub-screen ──────────────────────────────────────────────────────
 
-function LeaderboardScreen({ lang, onBack, entries, dbUser }: any) {
+function LeaderboardScreen({ lang, onBack, entries, dbUser }: { lang: "ua" | "en"; onBack: () => void; entries: LeaderboardEntry[]; dbUser: DbUser | null }) {
   const t: { title: string; rank: string; xp: string; artifacts: string; you: string } = {
     ua: { title: "Рейтинг", rank: "Місце", xp: "XP", artifacts: "Артефактів", you: "Ви" },
     en: { title: "Leaderboard", rank: "Rank", xp: "XP", artifacts: "Artifacts", you: "You" },
@@ -540,7 +558,7 @@ function LeaderboardScreen({ lang, onBack, entries, dbUser }: any) {
 
 // ── Quests Sub-screen ────────────────────────────────────────────────────────────
 
-function QuestsScreen({ lang, onBack, quests, progress, onClaim }: any) {
+function QuestsScreen({ lang, onBack, quests, progress, onClaim }: { lang: "ua" | "en"; onBack: () => void; quests: WeeklyQuest[]; progress: QuestProgress[]; onClaim: (questId: string) => void }) {
   const t: { title: string; progress: string; claim: string; claimed: string; complete: string; reward: string } = {
     ua: { title: "Тижневі квести", progress: "Прогрес", claim: "Забрати", claimed: "Отримано", complete: "Виконано", reward: "Нагорода" },
     en: { title: "Weekly Quests", progress: "Progress", claim: "Claim", claimed: "Claimed", complete: "Complete", reward: "Reward" },
@@ -611,7 +629,7 @@ function QuestsScreen({ lang, onBack, quests, progress, onClaim }: any) {
 
 // ── Collection Sub-screen ───────────────────────────────────────────────────────
 
-function CollectionScreen({ lang, onBack, progress, onClaim }: any) {
+function CollectionScreen({ lang, onBack, progress, onClaim }: { lang: "ua" | "en"; onBack: () => void; progress: MuseumProgress[]; onClaim: (category: ArtifactCategory) => void }) {
   const t: { title: string; artifacts: string; complete: string; claimReward: string; claimed: string; incomplete: string } = {
     ua: { title: "Колекції", artifacts: "Артефактів", complete: "Завершено!", claimReward: "Забрати нагороду", claimed: "Отримано", incomplete: "Не завершено" },
     en: { title: "Collections", artifacts: "Artifacts", complete: "Complete!", claimReward: "Claim Reward", claimed: "Claimed", incomplete: "Incomplete" },
