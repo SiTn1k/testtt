@@ -254,7 +254,7 @@ export interface DailyClaim {
 }
 
 export interface WeeklyQuest {
-  id: number;
+  id: string;
   quest_type: string;
   target_count: number;
   reward_xp: number;
@@ -265,7 +265,7 @@ export interface WeeklyQuest {
 }
 
 export interface QuestProgress {
-  quest_id: number;
+  quest_id: string;
   current_count: number;
   completed: boolean;
   claimed: boolean;
@@ -662,6 +662,9 @@ export class MuseumAPI {
       p_count: count,
     });
 
+    // Update quest progress for tap_count
+    await this.updateQuestProgress(userId, "tap_count", count);
+
     return { newTaps: tapResult || 0, newXp: xpResult || 0 };
   }
 
@@ -866,6 +869,9 @@ export class MuseumAPI {
     if (uniqueViews >= 10) await this.awardAchievement(userId, "TEN_ARTIFACTS");
     if (uniqueViews >= 56) await this.awardAchievement(userId, "ALL_ARTIFACTS");
 
+    // Update quest progress
+    await this.updateQuestProgress(userId, "view_artifacts", 1);
+
     return { xpEarned: 10, newViews: uniqueViews };
   }
 
@@ -953,6 +959,9 @@ export class MuseumAPI {
     await this.addXPAtomic(userId, 25);
     await this.awardAchievement(userId, "FIRST_ARTICLE");
 
+    // Update quest progress
+    await this.updateQuestProgress(userId, "read_articles", 1);
+
     return { unlocked: true, xpEarned: 25 };
   }
 
@@ -979,6 +988,9 @@ export class MuseumAPI {
     await supabase.from("referrals").insert([{ referrer_id: referrerId, referred_id: referredUserId }]);
     await this.addXPAtomic(referrerId, 50);
     await this.awardAchievement(referrerId, "FIRST_REFERRAL");
+
+    // Update quest progress for invite_friends
+    await this.updateQuestProgress(referrerId, "invite_friends", 1);
 
     const { count } = await supabase
       .from("referrals")
@@ -1126,7 +1138,50 @@ export class MuseumAPI {
     return data || [];
   }
 
-  async claimQuestReward(userId: number, questId: number): Promise<{ claimed: boolean; xpEarned: number }> {
+  async updateQuestProgress(userId: number, questType: string, increment: number = 1): Promise<void> {
+    const { data: quests } = await supabase
+      .from("weekly_quests")
+      .select("id, quest_type, target_count")
+      .eq("quest_type", questType);
+
+    if (!quests || quests.length === 0) return;
+
+    const today = new Date();
+    const weekStart = new Date(today);
+    weekStart.setDate(today.getDate() - today.getDay() + 1);
+    const weekStartStr = weekStart.toISOString().split("T")[0];
+
+    for (const quest of quests) {
+      const { data: existing } = await supabase
+        .from("user_quest_progress")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("quest_id", quest.id)
+        .maybeSingle();
+
+      if (existing) {
+        if (existing.claimed) continue;
+        const newCount = Math.min((existing.current_count || 0) + increment, quest.target_count);
+        const completed = newCount >= quest.target_count;
+        await supabase
+          .from("user_quest_progress")
+          .update({ current_count: newCount, completed })
+          .eq("id", existing.id);
+      } else {
+        const completed = increment >= quest.target_count;
+        await supabase
+          .from("user_quest_progress")
+          .insert([{
+            user_id: userId,
+            quest_id: quest.id,
+            current_count: Math.min(increment, quest.target_count),
+            completed,
+          }]);
+      }
+    }
+  }
+
+  async claimQuestReward(userId: number, questId: string): Promise<{ claimed: boolean; xpEarned: number }> {
     const { data: progress } = await supabase
       .from("user_quest_progress")
       .select("completed, claimed, current_count")
