@@ -115,7 +115,16 @@ export function getTelegramInitData(): string {
 }
 
 export function getStartParam(): string | null {
-  return window.Telegram?.WebApp?.initDataUnsafe?.start_param || null;
+  // First check Telegram WebApp API
+  const startParam = window.Telegram?.WebApp?.initDataUnsafe?.start_param;
+  if (startParam) return startParam;
+
+  // Fallback: check URL parameter tgWebAppStartParam (for direct links)
+  const urlParams = new URLSearchParams(window.location.search);
+  const urlStartParam = urlParams.get('tgWebAppStartParam');
+  if (urlStartParam) return urlStartParam;
+
+  return null;
 }
 
 export function closeTelegram(): void {
