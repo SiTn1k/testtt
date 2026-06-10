@@ -13,10 +13,35 @@ Deno.serve(async (req: Request) => {
 
   try {
     const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
     if (!botToken) {
       return new Response(
         JSON.stringify({ error: "TELEGRAM_BOT_TOKEN not configured" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const url = new URL(req.url);
+    const path = url.pathname.split("/").filter(Boolean);
+
+    // GET /stars-invoice/set-webhook - Register webhook with Telegram
+    if (path[1] === "set-webhook" && req.method === "GET") {
+      const webhookUrl = `${supabaseUrl}/functions/v1/telegram-webhook`;
+      const response = await fetch(
+        `https://api.telegram.org/bot${botToken}/setWebhook`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            url: webhookUrl,
+            allowed_updates: ["pre_checkout_query", "message"],
+          }),
+        }
+      );
+      const result = await response.json();
+      return new Response(
+        JSON.stringify({ webhook_url: webhookUrl, result }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -64,4 +89,3 @@ Deno.serve(async (req: Request) => {
     );
   }
 });
-
