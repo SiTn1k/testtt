@@ -422,10 +422,8 @@ function ReferralScreen({ lang, onBack, stats, dbUser }: { lang: "ua" | "en"; on
   }[lang as "ua" | "en"];
 
   const [copied, setCopied] = useState(false);
-  // Direct Mini App link format: https://t.me/bot/appname?startapp=ref_123
-  // Change "app" to your actual Mini App name registered in @BotFather
-  const MINI_APP_NAME = "app"; // Update this if your Mini App has a different name
-  const referralLink = dbUser ? `https://t.me/ukraine_museum_bot/${MINI_APP_NAME}?startapp=ref_${dbUser.telegram_id}` : "";
+  // Main Mini App referral link format (works when bot has menu button mini app configured in BotFather)
+  const referralLink = dbUser ? `https://t.me/test_museum_2026_bot?startapp=ref_${dbUser.telegram_id}` : "";
 
   const handleCopy = () => {
     navigator.clipboard.writeText(referralLink);
