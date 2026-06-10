@@ -1,6 +1,7 @@
 import { motion } from "motion/react";
+import type { ReactNode, MouseEventHandler } from "react";
 
-export function GlassCard({ children, className = "", onClick, hover = true }: any) {
+export function GlassCard({ children, className = "", onClick, hover = true }: { children: ReactNode; className?: string; onClick?: MouseEventHandler; hover?: boolean }) {
   return (
     <motion.div
       whileHover={onClick && hover ? { y: -4, scale: 1.02 } : {}}
