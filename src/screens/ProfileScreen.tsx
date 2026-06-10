@@ -1,16 +1,15 @@
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion } from "motion/react";
 import {
-  User, Zap, Star, Trophy, Clock, Landmark, Image as ImageIcon,
+  Zap, Star, Trophy, Clock, Landmark, ImageIcon,
   Heart, TrendingUp, Coins, Crown, Award, CheckCircle2,
   Gift, Flame, Users, Target, Medal, ChevronRight, ChevronLeft,
-  Calendar, Swords, Shield, BookOpen, Lock, Sparkles,
+  Swords, Shield, BookOpen, Scroll,
 } from "lucide-react";
 import { GlassCard } from "./GlassCard";
 import {
   museumAPI,
   CATEGORY_META,
-  RARITY_META,
   REFERRAL_MILESTONES,
   DAILY_REWARDS,
   type DailyStreak,
@@ -307,10 +306,10 @@ export function ProfileScreen({
 // ── Daily Rewards Sub-screen ────────────────────────────────────────────────────
 
 function DailyRewardsScreen({ lang, onBack, streak, todayClaim, onClaim }: any) {
-  const t = {
+  const t: { title: string; streak: string; longest: string; claim: string; claimed: string; day: string } = {
     ua: { title: "Щоденні нагороди", streak: "Серія", longest: "Найкраща серія", claim: "Забрати нагороду", claimed: "Отримано сьогодні", day: "День" },
     en: { title: "Daily Rewards", streak: "Streak", longest: "Longest Streak", claim: "Claim Reward", claimed: "Claimed today", day: "Day" },
-  }[lang];
+  }[lang as "ua" | "en"];
 
   return (
     <div className="space-y-6 pb-24">
@@ -350,7 +349,7 @@ function DailyRewardsScreen({ lang, onBack, streak, todayClaim, onClaim }: any) 
                 </div>
                 <div className="flex-1">
                   <div className="text-sm font-bold text-white">{t.day} {reward.day}</div>
-                  <div className="text-xs text-white/40">{reward.label[lang]}</div>
+                  <div className="text-xs text-white/40">{reward.label[lang as "ua" | "en"]}</div>
                 </div>
                 {isCurrentOrPast && <CheckCircle2 className="w-5 h-5 text-green-400" />}
               </div>
@@ -378,10 +377,10 @@ function DailyRewardsScreen({ lang, onBack, streak, todayClaim, onClaim }: any) 
 // ── Referral Sub-screen ─────────────────────────────────────────────────────────
 
 function ReferralScreen({ lang, onBack, stats, dbUser }: any) {
-  const t = {
+  const t: { title: string; invited: string; link: string; copy: string; copied: string; nextReward: string; milestones: string; rewards: string } = {
     ua: { title: "Реферали", invited: "Запрошено", link: "Ваше реферальне посилання", copy: "Копіювати", copied: "Скопійовано!", nextReward: "Наступна нагорода", milestones: "Етапи", rewards: "Отримані нагороди" },
     en: { title: "Referrals", invited: "Invited", link: "Your referral link", copy: "Copy", copied: "Copied!", nextReward: "Next Reward", milestones: "Milestones", rewards: "Received Rewards" },
-  }[lang];
+  }[lang as "ua" | "en"];
 
   const [copied, setCopied] = useState(false);
   const referralLink = dbUser ? `https://t.me/ukraine_museum_bot/app?startapp=ref_${dbUser.telegram_id}` : "";
@@ -443,7 +442,7 @@ function ReferralScreen({ lang, onBack, stats, dbUser }: any) {
                   {ms.count}
                 </div>
                 <div className="flex-1">
-                  <div className="text-sm font-bold text-white">{ms.label[lang]}</div>
+                  <div className="text-sm font-bold text-white">{ms.label[lang as "ua" | "en"]}</div>
                   <div className="text-[10px] text-white/40">{ms.count} {lang === "ua" ? "друзів" : "friends"}</div>
                 </div>
                 {achieved && (rewardClaimed ? <CheckCircle2 className="w-5 h-5 text-green-400" /> : <Gift className="w-5 h-5 text-[#ffd700]" />)}
@@ -459,10 +458,10 @@ function ReferralScreen({ lang, onBack, stats, dbUser }: any) {
 // ── Leaderboard Sub-screen ──────────────────────────────────────────────────────
 
 function LeaderboardScreen({ lang, onBack, entries, dbUser }: any) {
-  const t = {
+  const t: { title: string; rank: string; xp: string; artifacts: string; you: string } = {
     ua: { title: "Рейтинг", rank: "Місце", xp: "XP", artifacts: "Артефактів", you: "Ви" },
     en: { title: "Leaderboard", rank: "Rank", xp: "XP", artifacts: "Artifacts", you: "You" },
-  }[lang];
+  }[lang as "ua" | "en"];
 
   const rankColors = ["#ffd700", "#c0c0c0", "#cd7f32"];
 
@@ -542,10 +541,10 @@ function LeaderboardScreen({ lang, onBack, entries, dbUser }: any) {
 // ── Quests Sub-screen ────────────────────────────────────────────────────────────
 
 function QuestsScreen({ lang, onBack, quests, progress, onClaim }: any) {
-  const t = {
+  const t: { title: string; progress: string; claim: string; claimed: string; complete: string; reward: string } = {
     ua: { title: "Тижневі квести", progress: "Прогрес", claim: "Забрати", claimed: "Отримано", complete: "Виконано", reward: "Нагорода" },
     en: { title: "Weekly Quests", progress: "Progress", claim: "Claim", claimed: "Claimed", complete: "Complete", reward: "Reward" },
-  }[lang];
+  }[lang as "ua" | "en"];
 
   const getQuestProgress = (questId: number) => progress.find((p: QuestProgress) => p.quest_id === questId);
 
@@ -613,10 +612,10 @@ function QuestsScreen({ lang, onBack, quests, progress, onClaim }: any) {
 // ── Collection Sub-screen ───────────────────────────────────────────────────────
 
 function CollectionScreen({ lang, onBack, progress, onClaim }: any) {
-  const t = {
+  const t: { title: string; artifacts: string; complete: string; claimReward: string; claimed: string; incomplete: string } = {
     ua: { title: "Колекції", artifacts: "Артефактів", complete: "Завершено!", claimReward: "Забрати нагороду", claimed: "Отримано", incomplete: "Не завершено" },
     en: { title: "Collections", artifacts: "Artifacts", complete: "Complete!", claimReward: "Claim Reward", claimed: "Claimed", incomplete: "Incomplete" },
-  }[lang];
+  }[lang as "ua" | "en"];
 
   const categories: ArtifactCategory[] = ["kyivan_rus", "cossack_era", "unr", "modern_ukraine"];
 
