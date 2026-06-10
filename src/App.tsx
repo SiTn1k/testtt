@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { initTelegram, getTelegramUser } from "./lib/telegram";
-import { museumAPI, TAP_LEVELS, MAX_TAP_LEVEL, AUTOCLICKER_OPTIONS, TAP_ARTIFACTS, STARTER_ARTIFACT } from "./lib/api";
+import { initTelegram, getTelegramUser, getStartParam } from "./lib/telegram";
+import { museumAPI, TAP_LEVELS, MAX_TAP_LEVEL, AUTOCLICKER_OPTIONS, TAP_ARTIFACTS } from "./lib/api";
 import type { UserStats, TapGameState, TapArtifact, AutoclikerOption } from "./lib/api";
 import { TIMELINE_EVENT_DETAILS } from "./lib/timeline-data";
 import type { TimelineEventDetail } from "./lib/timeline-data";
@@ -8,12 +8,10 @@ import { motion, AnimatePresence } from "motion/react";
 import {
   Home as HomeIcon,
   Landmark,
-  Clock,
   User,
   Heart,
   ChevronRight,
   X,
-  Image as ImageIcon,
   Share2,
   Bookmark,
   Play,
@@ -24,14 +22,10 @@ import {
   Building2,
   Sparkles,
   Star,
-  Trophy,
   Zap,
-  Globe,
   Palette,
   TrendingUp,
-  Coins,
   CheckCircle2,
-  Award,
   Loader2,
   MousePointerClick,
   ArrowUpCircle,
@@ -39,6 +33,8 @@ import {
   ShoppingBag,
   BookOpen,
 } from "lucide-react";
+import { MuseumScreen as NewMuseumScreen } from "./screens/MuseumScreen";
+import { ProfileScreen as NewProfileScreen } from "./screens/ProfileScreen";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -53,15 +49,6 @@ interface Artifact {
   description: { ua: string; en: string };
   image: string;
   category: string;
-}
-
-interface TimelineEvent {
-  id: string;
-  year: string;
-  title: { ua: string; en: string };
-  description: { ua: string; en: string };
-  era: string;
-  icon: any;
 }
 
 interface TelegramUserData {
@@ -184,58 +171,6 @@ const ARTIFACTS: Artifact[] = [
   },
 ];
 
-const TIMELINE_EVENTS: TimelineEvent[] = [
-  {
-    id: "1",
-    year: "882",
-    title: { ua: "Заснування Київської Русі", en: "Foundation of Kyivan Rus" },
-    description: { ua: "Князь Олег об'єднує слов'янські племена", en: "Prince Oleg unites Slavic tribes" },
-    era: "Київська Русь",
-    icon: Crown,
-  },
-  {
-    id: "2",
-    year: "988",
-    title: { ua: "Хрещення Русі", en: "Baptism of Rus" },
-    description: { ua: "Князь Володимир хрестить Київську Русь", en: "Prince Volodymyr baptizes Kyivan Rus" },
-    era: "Київська Русь",
-    icon: Star,
-  },
-  {
-    id: "3",
-    year: "1648",
-    title: { ua: "Козацький Гетьманат", en: "Cossack Hetmanate" },
-    description: { ua: "Богдан Хмельницький очолює повстання", en: "Bohdan Khmelnytsky leads uprising" },
-    era: "Козацька доба",
-    icon: Sword,
-  },
-  {
-    id: "4",
-    year: "1991",
-    title: { ua: "Відновлення Незалежності", en: "Independence Restored" },
-    description: { ua: "Україна оголошує незалежність", en: "Ukraine declares independence" },
-    era: "Сучасність",
-    icon: Building2,
-  },
-  {
-    id: "5",
-    year: "2050",
-    title: { ua: "Зелена Енергія", en: "Green Energy" },
-    description: { ua: "Україна досягає 100% відновлюваної енергії", en: "Ukraine achieves 100% renewable energy" },
-    era: "Майбутнє",
-    icon: Sparkles,
-  },
-];
-
-const ALL_ACHIEVEMENTS = [
-  { key: "FIRST_VISIT", icon: Award, ua: "Перший візит", en: "First Visit", color: "#ffd700" },
-  { key: "ONE_HOUR", icon: Clock, ua: "Година в музеї", en: "One Hour", color: "#0057b7" },
-  { key: "TEN_ARTIFACTS", icon: Landmark, ua: "Десять артефактів", en: "Ten Artifacts", color: "#ffd700" },
-  { key: "FIRST_DONATION", icon: Heart, ua: "Перший донат", en: "First Donation", color: "#e85d04" },
-  { key: "DONATED_100", icon: Coins, ua: "Меценат 100", en: "Patron 100", color: "#0057b7" },
-  { key: "DONATED_1000", icon: Crown, ua: "Меценат 1000", en: "Patron 1000", color: "#ffd700" },
-];
-
 const TEXT: Record<Lang, any> = {
   ua: {
     home: { title: "Віртуальний Музей України", subtitle: "Подорож крізь тисячоліття історії", featured: "Рекомендовані", explore: "Досліджуйте", artifacts: "артефактів", viewAll: "Дивитись всі" },
@@ -299,7 +234,7 @@ function ArtifactCard({ artifact, lang, onClick }: { artifact: Artifact; lang: L
 
 // ─── Screens ───────────────────────────────────────────────────────────────────
 
-function HomeScreen({ lang, setSelectedArtifact, setScreen }: any) {
+function HomeScreen({ lang, setSelectedArtifact, setScreen }: { lang: Lang; setSelectedArtifact: (a: Artifact) => void; setScreen: (s: Screen) => void }) {
   const t = TEXT[lang].home;
 
   const historicalEras = [
@@ -437,96 +372,7 @@ function HomeScreen({ lang, setSelectedArtifact, setScreen }: any) {
   );
 }
 
-function MuseumScreen({ lang, setSelectedArtifact, onArtifactView }: any) {
-  const t = TEXT[lang].museum;
-  const [filter, setFilter] = useState("all");
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const [searchQuery, setSearchQuery] = useState("");
-
-  const categories = [
-    { id: "all", label: t.all, icon: Globe },
-    { id: "Архітектура", label: lang === "ua" ? "Архітектура" : "Architecture", icon: Building2 },
-    { id: "Мистецтво", label: lang === "ua" ? "Мистецтво" : "Art", icon: Palette },
-    { id: "Культура", label: lang === "ua" ? "Культура" : "Culture", icon: Star },
-    { id: "Історія", label: lang === "ua" ? "Історія" : "History", icon: Shield },
-    { id: "Музика", label: lang === "ua" ? "Музика" : "Music", icon: Play },
-  ];
-
-  const filteredArtifacts = ARTIFACTS.filter((a) => {
-    const matchesFilter = filter === "all" || a.category === filter;
-    const matchesSearch = a.title[lang].toLowerCase().includes(searchQuery.toLowerCase()) || a.description[lang].toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesFilter && matchesSearch;
-  });
-
-  const handleArtifactClick = (artifact: Artifact) => {
-    setSelectedArtifact(artifact);
-    onArtifactView(artifact.id);
-  };
-
-  return (
-    <div className="space-y-8 pb-32">
-      <div className="space-y-6 pt-4">
-        <div className="flex items-center justify-between px-1">
-          <h1 className="text-4xl font-black text-white tracking-tighter">{t.title}</h1>
-          <div className="flex p-1 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl">
-            <button onClick={() => setViewMode("grid")} className={`p-2 rounded-xl transition-all ${viewMode === "grid" ? "bg-white/10 text-white" : "text-white/30"}`}><Landmark className="w-4 h-4" /></button>
-            <button onClick={() => setViewMode("list")} className={`p-2 rounded-xl transition-all ${viewMode === "list" ? "bg-white/10 text-white" : "text-white/30"}`}><Clock className="w-4 h-4" /></button>
-          </div>
-        </div>
-        <div className="relative group">
-          <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none"><X className="w-5 h-5 text-white/20 group-focus-within:text-[#ffd700] transition-colors" /></div>
-          <input type="text" placeholder={t.search} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-12 pr-4 py-5 bg-white/[0.03] backdrop-blur-2xl border border-white/10 rounded-[22px] text-white text-sm font-medium focus:outline-none focus:border-[#ffd700]/50 transition-all placeholder:text-white/20 shadow-2xl" />
-        </div>
-      </div>
-
-      <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar -mx-4 px-4">
-        {categories.map((cat) => {
-          const Icon = cat.icon;
-          const isActive = filter === cat.id;
-          return (
-            <motion.button key={cat.id} whileTap={{ scale: 0.95 }} onClick={() => setFilter(cat.id)} className={`flex items-center gap-2 px-6 py-3.5 rounded-full border whitespace-nowrap transition-all font-black text-[10px] uppercase tracking-widest ${isActive ? "bg-[#ffd700] border-[#ffd700] text-[#0a0a0f] shadow-[0_0_20px_rgba(255,215,0,0.3)]" : "bg-white/5 border-white/5 text-white/40 hover:bg-white/10"}`}>
-              <Icon className="w-3.5 h-3.5" />{cat.label}
-            </motion.button>
-          );
-        })}
-      </div>
-
-      <AnimatePresence mode="popLayout">
-        {viewMode === "grid" ? (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="grid grid-cols-2 gap-5 px-1">
-            {filteredArtifacts.map((artifact, i) => (
-              <motion.div key={artifact.id} initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-                <ArtifactCard artifact={artifact} lang={lang} onClick={() => handleArtifactClick(artifact)} />
-              </motion.div>
-            ))}
-          </motion.div>
-        ) : (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4 px-1">
-            {filteredArtifacts.map((artifact, i) => (
-              <motion.div key={artifact.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }} onClick={() => handleArtifactClick(artifact)}>
-                <GlassCard className="p-0 overflow-hidden cursor-pointer hover:border-white/20 transition-all">
-                  <div className="flex gap-5">
-                    <div className="relative w-32 h-32 flex-shrink-0"><img src={artifact.image} alt={artifact.title[lang]} className="w-full h-full object-cover" /><div className="absolute inset-0 bg-gradient-to-r from-transparent to-[#0a0a0f]/40" /></div>
-                    <div className="flex-1 py-4 pr-5 flex flex-col justify-center space-y-2">
-                      <div className="flex items-start justify-between"><h3 className="text-white font-black text-base tracking-tight leading-tight">{artifact.title[lang]}</h3><ChevronRight className="w-5 h-5 text-white/20 flex-shrink-0 ml-2" /></div>
-                      <p className="text-white/40 text-[10px] font-medium leading-relaxed line-clamp-2">{artifact.description[lang]}</p>
-                      <div className="flex items-center gap-3">
-                        <span className="text-[9px] font-black px-2.5 py-1 rounded-full bg-[#ffd700]/10 text-[#ffd700] uppercase tracking-widest border border-[#ffd700]/20">{artifact.year}</span>
-                        <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">{artifact.era}</span>
-                      </div>
-                    </div>
-                  </div>
-                </GlassCard>
-              </motion.div>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
-function TimelineScreen({ lang }: any) {
+function TimelineScreen({ lang }: { lang: Lang }) {
   const t = TEXT[lang].timeline;
   const [selectedEvent, setSelectedEvent] = useState<TimelineEventDetail | null>(null);
 
@@ -642,146 +488,7 @@ function TimelineScreen({ lang }: any) {
   );
 }
 
-function ProfileScreen({ lang, setLang, telegramUser, dbUser, stats, onRefresh, sessionStartIso }: any) {
-  const t = TEXT[lang].profile;
-  const avatarUrl = telegramUser?.photo_url || "https://images.unsplash.com/photo-1587397845856-e6cf49176c70";
-  const [liveMinutes, setLiveMinutes] = useState(0);
-
-  // Update live session minutes every 30 seconds
-  useEffect(() => {
-    const calc = () => {
-      if (!sessionStartIso) return;
-      setLiveMinutes(Math.floor((Date.now() - new Date(sessionStartIso).getTime()) / 60000));
-    };
-    calc();
-    const iv = setInterval(calc, 30_000);
-    return () => clearInterval(iv);
-  }, [sessionStartIso]);
-
-  const totalMinutesLive = (stats?.totalMinutes || 0) + liveMinutes;
-  const formatTime = (mins: number) => {
-    if (mins < 60) return `${mins}хв`;
-    const h = Math.floor(mins / 60);
-    const m = mins % 60;
-    return m > 0 ? `${h}г ${m}хв` : `${h}г`;
-  };
-
-  const xpPercent = stats ? Math.min((stats.totalXP / stats.nextLevelXP) * 100, 100) : 0;
-
-  return (
-    <div className="space-y-6 pb-24">
-      {/* Header */}
-      <div className="relative pt-8 pb-4">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-48 bg-gradient-to-br from-[#0057b7]/20 to-[#ffd700]/20 blur-3xl -z-10" />
-        <div className="flex flex-col items-center">
-          <div className="relative">
-            <motion.div initial={{ scale: 0.8 }} animate={{ scale: 1 }} className="w-28 h-28 rounded-full p-1 bg-gradient-to-tr from-[#0057b7] via-[#a855f7] to-[#ffd700]">
-              <div className="w-full h-full rounded-full border-4 border-[#0a0a0f] overflow-hidden">
-                <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-              </div>
-            </motion.div>
-            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.3 }} className="absolute -bottom-1 -right-1 bg-gradient-to-tr from-[#0057b7] to-[#ffd700] p-2 rounded-full shadow-lg">
-              <Zap className="w-4 h-4 text-white" />
-            </motion.div>
-          </div>
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="text-center mt-4">
-            <div className="flex items-center justify-center gap-1.5 mb-1">
-              <h1 className="text-2xl font-bold text-white">{telegramUser?.first_name || "Guest"}</h1>
-              <Star className="w-5 h-5 text-[#ffd700] fill-[#ffd700]" />
-            </div>
-            <p className="text-sm text-white/50 tracking-wide">@{telegramUser?.username || "guest"}</p>
-          </motion.div>
-        </div>
-      </div>
-
-      {/* Rank */}
-      <GlassCard className="p-5 overflow-hidden relative">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <div className="text-[10px] uppercase tracking-wider text-white/40 mb-1">{t.rank}</div>
-            <div className="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#0057b7] to-[#ffd700]">
-              {stats?.rankName || t.rank} &bull; LVL {stats?.level || 1}
-            </div>
-          </div>
-          <div className="p-2 bg-white/5 rounded-xl"><Trophy className="w-5 h-5 text-[#ffd700]" /></div>
-        </div>
-        <div className="space-y-2">
-          <div className="flex justify-between text-xs mb-1">
-            <span className="text-white/60">{stats?.totalXP || 0} XP</span>
-            <span className="text-white/60">{stats?.nextLevelXP || 100} XP</span>
-          </div>
-          <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
-            <motion.div initial={{ width: 0 }} animate={{ width: `${xpPercent}%` }} transition={{ duration: 1, ease: "easeOut" }} className="h-full bg-gradient-to-r from-[#0057b7] to-[#ffd700]" />
-          </div>
-          <div className="text-[10px] text-center text-white/30 pt-1 italic">{t.nextRank}</div>
-        </div>
-      </GlassCard>
-
-      {/* Stats Grid */}
-      <div className="grid grid-cols-3 gap-3">
-        {[
-          { icon: Clock, label: t.timeSpent, value: formatTime(totalMinutesLive) },
-          { icon: Landmark, label: t.totalVisits, value: stats?.visitCount || 0 },
-          { icon: ImageIcon, label: t.viewedArtifacts, value: stats?.artifactsViewed || 0 },
-        ].map((stat, i) => (
-          <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 + i * 0.1 }}>
-            <GlassCard className="p-3 text-center flex flex-col items-center gap-1.5 h-full">
-              <stat.icon className="w-4 h-4 text-[#ffd700]/60" />
-              <div className="text-sm font-bold text-white">{stat.value}</div>
-              <div className="text-[9px] text-white/40 leading-tight">{stat.label}</div>
-            </GlassCard>
-          </motion.div>
-        ))}
-      </div>
-
-      {/* Total Donated */}
-      <GlassCard className="p-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-[#ffd700]/10 rounded-lg"><Heart className="w-4 h-4 text-[#ffd700]" /></div>
-          <div>
-            <div className="text-[10px] text-white/40">{lang === "ua" ? "Загальний донат" : "Total Donated"}</div>
-            <div className="text-lg font-bold text-white">{stats?.totalDonated || 0} {lang === "ua" ? "Stars" : "Stars"}</div>
-          </div>
-        </div>
-        <TrendingUp className="w-4 h-4 text-[#ffd700]/40" />
-      </GlassCard>
-
-      {/* Achievements */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between px-1">
-          <h3 className="text-sm font-bold text-white uppercase tracking-wider">{t.achievements}</h3>
-          <span className="text-[10px] text-[#ffd700] font-bold">{stats?.achievements?.length || 0}/{ALL_ACHIEVEMENTS.length}</span>
-        </div>
-        <div className="flex gap-3 overflow-x-auto pb-1 no-scrollbar">
-          {ALL_ACHIEVEMENTS.map((ach) => {
-            const unlocked = stats?.achievements?.includes(ach.key);
-            return (
-              <motion.div key={ach.key} whileTap={{ scale: 0.95 }} className="flex-shrink-0">
-                <GlassCard className={`p-3 flex flex-col items-center gap-2 w-28 ${unlocked ? "" : "opacity-40"}`}>
-                  <div className="p-2.5 rounded-2xl bg-white/5" style={{ color: unlocked ? ach.color : "#555" }}>
-                    <ach.icon className="w-6 h-6" />
-                  </div>
-                  <span className="text-[10px] font-semibold text-white/80 text-center">{ach[lang]}</span>
-                  {unlocked && <CheckCircle2 className="w-3 h-3 text-green-400" />}
-                </GlassCard>
-              </motion.div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Footer */}
-      <div className="text-center space-y-2 pt-4">
-        <button onClick={() => setLang(lang === "ua" ? "en" : "ua")} className="text-xs text-white/40 hover:text-white transition-colors">
-          {lang === "ua" ? "English" : "Українська"}
-        </button>
-        <p className="text-[10px] text-white/20">ID: {telegramUser?.id || "guest"}</p>
-      </div>
-    </div>
-  );
-}
-
-function SupportScreen({ lang, telegramUser, dbUser, onDonated }: any) {
+function SupportScreen({ lang, dbUser, onDonated }: { lang: Lang; dbUser: DbUser | null; onDonated: () => void }) {
   const t = TEXT[lang].support;
   const [selectedAmount, setSelectedAmount] = useState<number | null>(50);
   const [customAmount, setCustomAmount] = useState("");
@@ -996,12 +703,12 @@ function SupportScreen({ lang, telegramUser, dbUser, onDonated }: any) {
 
 // ─── Tap Screen ────────────────────────────────────────────────────────────────
 
-function TapScreen({ lang, dbUser, stats, onRefresh }: any) {
+function TapScreen({ lang, dbUser, stats, onRefresh }: { lang: Lang; dbUser: DbUser | null; stats: UserStats | null; onRefresh: () => void }) {
   const t = TEXT[lang].tap;
   const [tapState, setTapState] = useState<TapGameState | null>(null);
   const [tableExists, setTableExists] = useState(true);
   const [taps, setTaps] = useState(0);
-  const [floatingXPs, setFloatingXPs] = useState<{ id: number; x: number; y: number; value: string }[]>([]);
+  const [floatingXPs, setFloatingXPs] = useState<{ id: number; x: string; y: number; value: string }[]>([]);
   const [isUpgrading, setIsUpgrading] = useState(false);
   const [isBuyingAutoclicker, setIsBuyingAutoclicker] = useState(false);
   const [upgradeMsg, setUpgradeMsg] = useState("");
@@ -1012,10 +719,10 @@ function TapScreen({ lang, dbUser, stats, onRefresh }: any) {
   const [showAutoclicker, setShowAutoclicker] = useState(false);
   const [buyingArtifact, setBuyingArtifact] = useState<string | null>(null);
   const [autoclickerTimeLeft, setAutoclickerTimeLeft] = useState<string | null>(null);
+  const handleTapRef = useRef<() => void>(() => {});
 
   // Batch tap tracking — accumulate locally, flush to DB every 2 seconds
   const pendingTapsRef = useRef<{ count: number; totalXP: number }>({ count: 0, totalXP: 0 });
-  const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Keep localXP in sync with stats — but add pending taps' XP so they don't get wiped
   useEffect(() => {
@@ -1102,8 +809,7 @@ function TapScreen({ lang, dbUser, stats, onRefresh }: any) {
 
     const interval = setInterval(() => {
       if (new Date(acUntil).getTime() <= Date.now()) return;
-      // Trigger a tap programmatically
-      handleTap();
+      handleTapRef.current();
     }, 1000);
 
     return () => clearInterval(interval);
@@ -1163,6 +869,7 @@ function TapScreen({ lang, dbUser, stats, onRefresh }: any) {
 
     setTimeout(() => setFloatingXPs(prev => prev.filter(f => f.id !== id)), 800);
   };
+  handleTapRef.current = handleTap;
 
   const handleUpgrade = async () => {
     if (!dbUser || !tapState || tapState.tap_level >= MAX_TAP_LEVEL || isUpgrading) return;
@@ -1685,6 +1392,15 @@ export default function App() {
           setDbUser(profile);
           dbUserRef.current = profile;
 
+          // Handle referral from start_param
+          const startParam = getStartParam();
+          if (startParam?.startsWith("ref_")) {
+            const referrerTelegramId = parseInt(startParam.slice(4), 10);
+            if (referrerTelegramId && referrerTelegramId !== user.id) {
+              museumAPI.processReferral(referrerTelegramId, profile.id).catch(console.error);
+            }
+          }
+
           const sid = await museumAPI.startSession(profile.id);
           sessionIdRef.current = sid;
           sessionStartIsoRef.current = new Date().toISOString();
@@ -1792,10 +1508,10 @@ export default function App() {
             <motion.div key={screen} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }}>
               {screen === "home" && <HomeScreen lang={lang} setSelectedArtifact={setSelectedArtifact} setScreen={setScreen} />}
               {screen === "tap" && <TapScreen lang={lang} dbUser={dbUser} stats={stats} onRefresh={refreshStats} />}
-              {screen === "museum" && <MuseumScreen lang={lang} setSelectedArtifact={setSelectedArtifact} onArtifactView={handleArtifactView} />}
+              {screen === "museum" && <NewMuseumScreen lang={lang} dbUser={dbUser} onRefresh={refreshStats} />}
               {screen === "timeline" && <TimelineScreen lang={lang} />}
-              {screen === "profile" && <ProfileScreen lang={lang} setLang={setLang} telegramUser={telegramUser} dbUser={dbUser} stats={stats} onRefresh={refreshStats} sessionStartIso={sessionStartIsoRef.current} />}
-              {screen === "support" && <SupportScreen lang={lang} telegramUser={telegramUser} dbUser={dbUser} onDonated={handleDonated} />}
+              {screen === "profile" && <NewProfileScreen lang={lang} setLang={setLang} telegramUser={telegramUser} dbUser={dbUser} stats={stats} onRefresh={refreshStats} sessionStartIso={sessionStartIsoRef.current} />}
+              {screen === "support" && <SupportScreen lang={lang} dbUser={dbUser} onDonated={handleDonated} />}
             </motion.div>
           </AnimatePresence>
         </div>
