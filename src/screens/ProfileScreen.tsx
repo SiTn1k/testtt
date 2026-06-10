@@ -131,7 +131,7 @@ export function ProfileScreen({
     }
   };
 
-  const handleClaimQuest = async (questId: number) => {
+  const handleClaimQuest = async (questId: string) => {
     if (!dbUser) return;
     const result = await museumAPI.claimQuestReward(dbUser.id, questId);
     if (result.claimed) {
@@ -274,6 +274,27 @@ export function ProfileScreen({
         </GlassCard>
       </motion.div>
 
+      {/* Telegram Channel */}
+      <motion.div whileTap={{ scale: 0.97 }}>
+        <GlassCard
+          onClick={() => window.open("https://t.me/SITNIK_BLOG", "_blank")}
+          className="p-4 cursor-pointer bg-gradient-to-r from-[#0057b7]/10 to-[#ffd700]/10"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-2xl bg-[#0057b7]">
+              <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.06-.14-.04-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .37z"/>
+              </svg>
+            </div>
+            <div className="flex-1">
+              <span className="text-sm font-bold text-white">{lang === "ua" ? "Телеграм канал" : "Telegram Channel"}</span>
+              <p className="text-[10px] text-white/40">{lang === "ua" ? "Приєднуйтесь до нашої спільноти!" : "Join our community!"}</p>
+            </div>
+            <ChevronRight className="w-4 h-4 text-white/20" />
+          </div>
+        </GlassCard>
+      </motion.div>
+
       {/* Total Donated */}
       <GlassCard className="p-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -401,7 +422,7 @@ function ReferralScreen({ lang, onBack, stats, dbUser }: { lang: "ua" | "en"; on
   }[lang as "ua" | "en"];
 
   const [copied, setCopied] = useState(false);
-  const referralLink = dbUser ? `https://t.me/ukraine_museum_bot/app?startapp=ref_${dbUser.telegram_id}` : "";
+  const referralLink = dbUser ? `https://t.me/ukraine_museum_bot?startapp=ref_${dbUser.telegram_id}` : "";
 
   const handleCopy = () => {
     navigator.clipboard.writeText(referralLink);
@@ -564,7 +585,7 @@ function QuestsScreen({ lang, onBack, quests, progress, onClaim }: { lang: "ua" 
     en: { title: "Weekly Quests", progress: "Progress", claim: "Claim", claimed: "Claimed", complete: "Complete", reward: "Reward" },
   }[lang as "ua" | "en"];
 
-  const getQuestProgress = (questId: number) => progress.find((p: QuestProgress) => p.quest_id === questId);
+  const getQuestProgress = (questId: string) => progress.find((p: QuestProgress) => p.quest_id === questId);
 
   return (
     <div className="space-y-6 pb-24">
