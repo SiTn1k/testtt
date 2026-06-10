@@ -16,7 +16,7 @@ interface WebAppInitData {
   auth_date: number;
   hash: string;
   start_param?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 declare global {
@@ -44,7 +44,7 @@ declare global {
         sendData: (data: string) => void;
         openLink: (url: string) => void;
         openInvoice: (url: string, callback?: (status: string) => void) => void;
-        showPopup: (params: any, callback?: (buttonId: string) => void) => void;
+        showPopup: (params: { title?: string; message: string; buttons?: Array<{ id?: string; type?: string; text?: string }> }, callback?: (buttonId: string) => void) => void;
         showAlert: (message: string, callback?: () => void) => void;
         showConfirm: (message: string, callback?: (confirmed: boolean) => void) => void;
         HapticFeedback?: {
