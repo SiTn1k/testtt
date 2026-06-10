@@ -355,6 +355,14 @@ export class MuseumAPI {
     return data.id;
   }
 
+  async updateSessionProgress(sessionId: number, sessionStartIso: string): Promise<void> {
+    const minutesSpent = Math.max(1, Math.floor((Date.now() - new Date(sessionStartIso).getTime()) / 60000));
+    await supabase
+      .from("activity_sessions")
+      .update({ minutes_spent: minutesSpent })
+      .eq("id", sessionId);
+  }
+
   async endSession(sessionId: number, userId: number): Promise<void> {
     const { data: session } = await supabase
       .from("activity_sessions")
@@ -452,18 +460,18 @@ export class MuseumAPI {
     if (total >= 1000) await this.awardAchievement(userId, "DONATED_1000");
   }
 
-  async getGlobalDonationStats(): Promise<{ totalRaised: number; donorsCount: number }> {
-    const { data, error } = await supabase
-      .from("donations")
-      .select("amount, user_id")
-      .eq("status", "completed");
+  async getGlobalDonationStats(): Promise<{ totalRaised: number; donorsCount: number; totalUsers: number }> {
+    const [donationsResult, usersResult] = await Promise.all([
+      supabase.from("donations").select("amount, user_id").eq("status", "completed"),
+      supabase.from("users").select("id", { count: "exact", head: true }),
+    ]);
 
-    if (error) return { totalRaised: 0, donorsCount: 0 };
+    const data = donationsResult.data || [];
+    const totalRaised = data.reduce((sum: number, d: { amount: number }) => sum + Number(d.amount), 0);
+    const donorsCount = new Set(data.map((d: { user_id: number }) => d.user_id)).size;
+    const totalUsers = usersResult.count || 0;
 
-    const totalRaised = (data || []).reduce((sum: number, d: { amount: number }) => sum + Number(d.amount), 0);
-    const donorsCount = new Set((data || []).map((d: { user_id: number }) => d.user_id)).size;
-
-    return { totalRaised, donorsCount };
+    return { totalRaised, donorsCount, totalUsers };
   }
 
   async getDonationHistory(userId: number) {
