@@ -15,6 +15,7 @@ interface WebAppInitData {
   user?: TelegramUser;
   auth_date: number;
   hash: string;
+  start_param?: string;
   [key: string]: any;
 }
 
@@ -113,6 +114,10 @@ export function getTelegramInitData(): string {
   return window.Telegram?.WebApp?.initData || '';
 }
 
+export function getStartParam(): string | null {
+  return window.Telegram?.WebApp?.initDataUnsafe?.start_param || null;
+}
+
 export function closeTelegram(): void {
   if (window.Telegram?.WebApp) {
     window.Telegram.WebApp.close();
@@ -142,4 +147,3 @@ export function triggerHapticFeedback(type: 'light' | 'medium' | 'heavy'): void 
     window.Telegram.WebApp.HapticFeedback.impactOccurred(type);
   }
 }
-
