@@ -32,6 +32,7 @@ import {
   Timer,
   ShoppingBag,
   BookOpen,
+  Send,
 } from "lucide-react";
 import { MuseumScreen as NewMuseumScreen } from "./screens/MuseumScreen";
 import { ProfileScreen as NewProfileScreen } from "./screens/ProfileScreen";
@@ -357,6 +358,27 @@ function HomeScreen({ lang, setSelectedArtifact, setScreen }: { lang: Lang; setS
             </motion.div>
           ))}
         </div>
+      </div>
+
+      {/* Telegram Channel */}
+      <div className="px-2">
+        <GlassCard
+          onClick={() => window.open("https://t.me/SITNIK_BLOG", "_blank")}
+          className="p-5 flex items-center gap-4 group cursor-pointer bg-gradient-to-r from-[#0057b7]/10 to-[#ffd700]/10"
+        >
+          <div className="w-12 h-12 rounded-2xl bg-[#0057b7] flex items-center justify-center">
+            <Send className="w-6 h-6 text-white" />
+          </div>
+          <div className="flex-1">
+            <h4 className="text-base font-bold text-white">
+              {lang === "ua" ? "Телеграм канал" : "Telegram Channel"}
+            </h4>
+            <p className="text-xs text-white/50">
+              {lang === "ua" ? "Приєднуйтесь до нашої спільноти!" : "Join our community!"}
+            </p>
+          </div>
+          <ChevronRight className="w-5 h-5 text-white/40 group-hover:text-[#ffd700] group-hover:translate-x-1 transition-all" />
+        </GlassCard>
       </div>
 
       {/* Featured Artifacts */}
