@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
+import type { LucideIcon } from "lucide-react";
 import {
   Globe, Crown, Sword, Scroll, Building2,
   ChevronLeft, BookOpen, Lock,
@@ -16,14 +17,14 @@ import {
   type ArtifactCategory,
 } from "../lib/api";
 
-const CATEGORY_ICONS: Record<ArtifactCategory, any> = {
+const CATEGORY_ICONS: Record<ArtifactCategory, LucideIcon> = {
   kyivan_rus: Crown,
   cossack_era: Sword,
   unr: Scroll,
   modern_ukraine: Building2,
 };
 
-export function MuseumScreen({ lang, dbUser, onRefresh }: { lang: "ua" | "en"; dbUser: any; onRefresh: () => void }) {
+export function MuseumScreen({ lang, dbUser, onRefresh }: { lang: "ua" | "en"; dbUser: { id: string } | null; onRefresh: () => void }) {
   const t = {
     ua: { title: "Колекція", search: "Пошук артефактів...", all: "Всі", articles: "Статті", progress: "Прогрес", viewed: "Переглянуто", history: "Історія", unlockReq: "Потрібно переглянути", unlocked: "Розблоковано", read: "Прочитати", collection: "Колекція", complete: "Завершено", claimReward: "Отримати нагороду", claimed: "Отримано", artifactsViewed: "Артефактів переглянуто", xpEarned: "XP отримано", close: "Закрити", rarity: "Рідкість", category: "Категорія", year: "Рік" },
     en: { title: "Collection", search: "Search artifacts...", all: "All", articles: "Articles", progress: "Progress", viewed: "Viewed", history: "History", unlockReq: "Need to view", unlocked: "Unlocked", read: "Read", collection: "Collection", complete: "Complete", claimReward: "Claim Reward", claimed: "Claimed", artifactsViewed: "Artifacts viewed", xpEarned: "XP earned", close: "Close", rarity: "Rarity", category: "Category", year: "Year" },
@@ -84,7 +85,7 @@ export function MuseumScreen({ lang, dbUser, onRefresh }: { lang: "ua" | "en"; d
   const filteredArtifacts = artifacts.filter(a => filter === "all" || a.category === filter);
   const filteredArticles = articles.filter(a => filter === "all" || a.category === filter);
 
-  const categories: { id: ArtifactCategory | "all"; label: string; icon: any }[] = [
+  const categories: { id: ArtifactCategory | "all"; label: string; icon: LucideIcon }[] = [
     { id: "all", label: t.all, icon: Globe },
     ...Object.entries(CATEGORY_META).map(([key, meta]) => ({
       id: key as ArtifactCategory,
