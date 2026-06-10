@@ -189,6 +189,128 @@ export interface UserStats {
   achievements: string[];
 }
 
+// ── Stage 2&3 Types ────────────────────────────────────────────────────────────
+
+export type ArtifactCategory = "kyivan_rus" | "cossack_era" | "unr" | "modern_ukraine";
+export type ArtifactRarity = "common" | "rare" | "epic" | "legendary";
+
+export interface MuseumArtifact {
+  id: string;
+  category: ArtifactCategory;
+  rarity: ArtifactRarity;
+  title_ua: string;
+  title_en: string;
+  description_ua: string;
+  description_en: string;
+  history_ua: string;
+  history_en: string;
+  image: string;
+  year: number;
+  sort_order: number;
+}
+
+export interface MuseumArticle {
+  id: string;
+  category: ArtifactCategory;
+  title_ua: string;
+  title_en: string;
+  content_ua: string;
+  content_en: string;
+  required_views: number;
+  sort_order: number;
+}
+
+export interface MuseumProgress {
+  user_id: number;
+  category: ArtifactCategory;
+  artifacts_viewed: number;
+  articles_unlocked: number;
+  collection_completed: boolean;
+}
+
+export interface ReferralStats {
+  invitedCount: number;
+  rewards: ReferralReward[];
+  nextMilestone: number | null;
+}
+
+export interface ReferralReward {
+  milestone: number;
+  reward_type: string;
+  reward_key: string;
+}
+
+export interface DailyStreak {
+  current_streak: number;
+  longest_streak: number;
+  last_login_date: string;
+}
+
+export interface DailyClaim {
+  claim_date: string;
+  streak_day: number;
+  reward_type: string;
+  reward_amount: number;
+}
+
+export interface WeeklyQuest {
+  id: number;
+  quest_type: string;
+  target_count: number;
+  reward_xp: number;
+  title_ua: string;
+  title_en: string;
+  week_start: string;
+  week_end: string;
+}
+
+export interface QuestProgress {
+  quest_id: number;
+  current_count: number;
+  completed: boolean;
+  claimed: boolean;
+}
+
+export interface LeaderboardEntry {
+  user_id: number;
+  first_name: string;
+  username: string | null;
+  total_xp: number;
+  artifacts_viewed: number;
+  rank: number;
+}
+
+export const CATEGORY_META: Record<ArtifactCategory, { ua: string; en: string; icon: string; color: string }> = {
+  kyivan_rus: { ua: "Київська Русь", en: "Kyivan Rus", icon: "👑", color: "#ffd700" },
+  cossack_era: { ua: "Козацька Доба", en: "Cossack Era", icon: "⚔️", color: "#c0392b" },
+  unr: { ua: "УНР", en: "UNR", icon: "📜", color: "#0057b7" },
+  modern_ukraine: { ua: "Сучасна Україна", en: "Modern Ukraine", icon: "🇺🇦", color: "#ffd700" },
+};
+
+export const RARITY_META: Record<ArtifactRarity, { ua: string; en: string; color: string; glow: string }> = {
+  common: { ua: "Звичайний", en: "Common", color: "#9ca3af", glow: "" },
+  rare: { ua: "Рідкісний", en: "Rare", color: "#3b82f6", glow: "0 0 8px rgba(59,130,246,0.4)" },
+  epic: { ua: "Епічний", en: "Epic", color: "#a855f7", glow: "0 0 12px rgba(168,85,247,0.4)" },
+  legendary: { ua: "Легендарний", en: "Legendary", color: "#ffd700", glow: "0 0 16px rgba(255,215,0,0.5)" },
+};
+
+export const REFERRAL_MILESTONES = [
+  { count: 1, reward_type: "artifact", reward_key: "ref_common_1", label: { ua: "Артефакт", en: "Artifact" } },
+  { count: 5, reward_type: "xp_boost", reward_key: "x2_xp_15min", label: { ua: "x2 XP 15хв", en: "x2 XP 15min" } },
+  { count: 10, reward_type: "autoclicker", reward_key: "free_1hr", label: { ua: "Автоклікер 1год", en: "Autoclicker 1hr" } },
+  { count: 25, reward_type: "artifact", reward_key: "ref_rare_1", label: { ua: "Рідкісний артефакт", en: "Rare Artifact" } },
+  { count: 50, reward_type: "artifact", reward_key: "ref_epic_1", label: { ua: "Епічний артефакт", en: "Epic Artifact" } },
+  { count: 100, reward_type: "artifact", reward_key: "ref_legendary_1", label: { ua: "Легендарний артефакт", en: "Legendary Artifact" } },
+];
+
+export const DAILY_REWARDS = [
+  { day: 1, reward_type: "xp", amount: 25, label: { ua: "25 XP", en: "25 XP" } },
+  { day: 3, reward_type: "xp", amount: 100, label: { ua: "100 XP", en: "100 XP" } },
+  { day: 7, reward_type: "xp_boost", amount: 2, label: { ua: "x2 XP 15хв", en: "x2 XP 15min" } },
+  { day: 14, reward_type: "artifact", amount: 1, label: { ua: "Рідкісний артефакт", en: "Rare Artifact" } },
+  { day: 30, reward_type: "artifact", amount: 1, label: { ua: "Епічний артефакт", en: "Epic Artifact" } },
+];
+
 const RANK_THRESHOLDS = [
   { minXP: 0,       key: "novice",    ua: "Новачок",        en: "Novice",        nextXP: 100    },
   { minXP: 100,     key: "explorer",  ua: "Дослідник",      en: "Explorer",      nextXP: 500    },
@@ -696,6 +818,417 @@ export class MuseumAPI {
       .insert([{ user_id: userId, achievement_key: key }]);
 
     if (error) console.error("Award achievement error:", error);
+  }
+
+  // ── Stage 2: Museum Artifacts ───────────────────────────────────────────────
+
+  async getMuseumArtifacts(category?: ArtifactCategory): Promise<MuseumArtifact[]> {
+    let query = supabase.from("museum_artifacts").select("*").order("sort_order");
+    if (category) query = query.eq("category", category);
+    const { data, error } = await query;
+    if (error) { console.error("Get museum artifacts error:", error); return []; }
+    return data || [];
+  }
+
+  async viewMuseumArtifact(userId: number, artifactId: string): Promise<{ xpEarned: number; newViews: number }> {
+    const { data: existing } = await supabase
+      .from("artifact_views")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("artifact_id", artifactId)
+      .maybeSingle();
+
+    if (existing) return { xpEarned: 0, newViews: 0 };
+
+    await supabase.from("artifact_views").insert([
+      { user_id: userId, artifact_id: artifactId, viewed_at: new Date().toISOString() },
+    ]);
+
+    await this.addXPAtomic(userId, 10);
+
+    const { data: artifact } = await supabase
+      .from("museum_artifacts")
+      .select("category")
+      .eq("id", artifactId)
+      .maybeSingle();
+
+    if (artifact) {
+      await this.updateMuseumProgress(userId, artifact.category as ArtifactCategory);
+    }
+
+    const { data: views } = await supabase
+      .from("artifact_views")
+      .select("artifact_id")
+      .eq("user_id", userId);
+    const uniqueViews = new Set((views || []).map((v: { artifact_id: string }) => v.artifact_id)).size;
+
+    if (uniqueViews >= 1) await this.awardAchievement(userId, "FIRST_ARTIFACT_VIEW");
+    if (uniqueViews >= 10) await this.awardAchievement(userId, "TEN_ARTIFACTS");
+    if (uniqueViews >= 56) await this.awardAchievement(userId, "ALL_ARTIFACTS");
+
+    return { xpEarned: 10, newViews: uniqueViews };
+  }
+
+  private async updateMuseumProgress(userId: number, category: ArtifactCategory): Promise<void> {
+    const { data: existing } = await supabase
+      .from("user_museum_progress")
+      .select("artifacts_viewed, collection_completed")
+      .eq("user_id", userId)
+      .eq("category", category)
+      .maybeSingle();
+
+    const viewed = (existing?.artifacts_viewed || 0) + 1;
+    const { count: totalInCategory } = await supabase
+      .from("museum_artifacts")
+      .select("*", { count: "exact", head: true })
+      .eq("category", category);
+
+    const completed = !!(totalInCategory && viewed >= totalInCategory);
+
+    if (existing) {
+      await supabase
+        .from("user_museum_progress")
+        .update({ artifacts_viewed: viewed, collection_completed: completed })
+        .eq("user_id", userId)
+        .eq("category", category);
+    } else {
+      await supabase
+        .from("user_museum_progress")
+        .insert([{ user_id: userId, category, artifacts_viewed: viewed, articles_unlocked: 0, collection_completed: completed }]);
+    }
+
+    if (completed && !existing?.collection_completed) {
+      await this.awardAchievement(userId, "COLLECTION_" + category.toUpperCase());
+      await this.addXPAtomic(userId, 200);
+    }
+  }
+
+  async getMuseumProgress(userId: number): Promise<MuseumProgress[]> {
+    const { data, error } = await supabase
+      .from("user_museum_progress")
+      .select("*")
+      .eq("user_id", userId);
+    if (error) { console.error("Get museum progress error:", error); return []; }
+    return data || [];
+  }
+
+  // ── Stage 2: Articles ───────────────────────────────────────────────────────
+
+  async getArticles(category?: ArtifactCategory): Promise<MuseumArticle[]> {
+    let query = supabase.from("museum_articles").select("*").order("sort_order");
+    if (category) query = query.eq("category", category);
+    const { data, error } = await query;
+    if (error) { console.error("Get articles error:", error); return []; }
+    return data || [];
+  }
+
+  async readArticle(userId: number, articleId: string): Promise<{ unlocked: boolean; xpEarned: number }> {
+    const { data: article } = await supabase
+      .from("museum_articles")
+      .select("category, required_views")
+      .eq("id", articleId)
+      .maybeSingle();
+
+    if (!article) return { unlocked: false, xpEarned: 0 };
+
+    const { data: progress } = await supabase
+      .from("user_museum_progress")
+      .select("artifacts_viewed, articles_unlocked")
+      .eq("user_id", userId)
+      .eq("category", article.category)
+      .maybeSingle();
+
+    const viewed = progress?.artifacts_viewed || 0;
+    if (viewed < article.required_views) return { unlocked: false, xpEarned: 0 };
+
+    const newUnlocked = (progress?.articles_unlocked || 0) + 1;
+    if (progress) {
+      await supabase
+        .from("user_museum_progress")
+        .update({ articles_unlocked: newUnlocked })
+        .eq("user_id", userId)
+        .eq("category", article.category);
+    }
+
+    await this.addXPAtomic(userId, 25);
+    await this.awardAchievement(userId, "FIRST_ARTICLE");
+
+    return { unlocked: true, xpEarned: 25 };
+  }
+
+  // ── Stage 2: Referrals ──────────────────────────────────────────────────────
+
+  async processReferral(referrerTelegramId: number, referredUserId: number): Promise<void> {
+    const { data: referrer } = await supabase
+      .from("users")
+      .select("id")
+      .eq("telegram_id", referrerTelegramId)
+      .maybeSingle();
+
+    if (!referrer) return;
+    const referrerId = referrer.id;
+    if (referrerId === referredUserId) return;
+
+    const { data: existing } = await supabase
+      .from("referrals")
+      .select("id")
+      .eq("referred_id", referredUserId)
+      .maybeSingle();
+    if (existing) return;
+
+    await supabase.from("referrals").insert([{ referrer_id: referrerId, referred_id: referredUserId }]);
+    await this.addXPAtomic(referrerId, 50);
+    await this.awardAchievement(referrerId, "FIRST_REFERRAL");
+
+    const { count } = await supabase
+      .from("referrals")
+      .select("*", { count: "exact", head: true })
+      .eq("referrer_id", referrerId);
+
+    const invitedCount = count || 0;
+    for (const ms of REFERRAL_MILESTONES) {
+      if (invitedCount >= ms.count) {
+        const { data: already } = await supabase
+          .from("referral_rewards")
+          .select("id")
+          .eq("user_id", referrerId)
+          .eq("milestone", ms.count)
+          .maybeSingle();
+        if (!already) {
+          await supabase.from("referral_rewards").insert([{
+            user_id: referrerId, milestone: ms.count,
+            reward_type: ms.reward_type, reward_key: ms.reward_key,
+          }]);
+        }
+      }
+    }
+  }
+
+  async getReferralStats(userId: number): Promise<ReferralStats> {
+    const { count } = await supabase
+      .from("referrals")
+      .select("*", { count: "exact", head: true })
+      .eq("referrer_id", userId);
+
+    const { data: rewards } = await supabase
+      .from("referral_rewards")
+      .select("milestone, reward_type, reward_key")
+      .eq("user_id", userId);
+
+    const invitedCount = count || 0;
+    const nextMilestone = REFERRAL_MILESTONES.find(m => m.count > invitedCount)?.count ?? null;
+
+    return {
+      invitedCount,
+      rewards: (rewards || []) as ReferralReward[],
+      nextMilestone,
+    };
+  }
+
+  // ── Stage 3: Daily Rewards / Login Streak ──────────────────────────────────────
+
+  async claimDailyReward(userId: number): Promise<{ claimed: boolean; streakDay: number; reward: typeof DAILY_REWARDS[number] | null }> {
+    const today = new Date().toISOString().slice(0, 10);
+
+    const { data: existingClaim } = await supabase
+      .from("daily_reward_claims")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("claim_date", today)
+      .maybeSingle();
+
+    if (existingClaim) return { claimed: false, streakDay: 0, reward: null };
+
+    let streak: DailyStreak;
+    const { data: existingStreak } = await supabase
+      .from("daily_login_streak")
+      .select("*")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (existingStreak) {
+      const lastDate = existingStreak.last_login_date;
+      const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+      const isConsecutive = lastDate === yesterday;
+      const current_streak = isConsecutive ? existingStreak.current_streak + 1 : 1;
+      const longest_streak = Math.max(current_streak, existingStreak.longest_streak);
+
+      await supabase
+        .from("daily_login_streak")
+        .update({ current_streak, longest_streak, last_login_date: today })
+        .eq("user_id", userId);
+
+      streak = { current_streak, longest_streak, last_login_date: today };
+    } else {
+      await supabase
+        .from("daily_login_streak")
+        .insert([{ user_id: userId, current_streak: 1, longest_streak: 1, last_login_date: today }]);
+      streak = { current_streak: 1, longest_streak: 1, last_login_date: today };
+    }
+
+    const applicableReward = [...DAILY_REWARDS].reverse().find(r => streak.current_streak >= r.day) || DAILY_REWARDS[0];
+    const streakDay = streak.current_streak;
+
+    await supabase.from("daily_reward_claims").insert([{
+      user_id: userId, claim_date: today, streak_day: streakDay,
+      reward_type: applicableReward.reward_type, reward_amount: applicableReward.amount,
+    }]);
+
+    if (applicableReward.reward_type === "xp") {
+      await this.addXPAtomic(userId, applicableReward.amount);
+    }
+
+    if (streak.current_streak >= 7) await this.awardAchievement(userId, "STREAK_7");
+    if (streak.current_streak >= 30) await this.awardAchievement(userId, "STREAK_30");
+
+    return { claimed: true, streakDay, reward: applicableReward };
+  }
+
+  async getDailyStreak(userId: number): Promise<DailyStreak | null> {
+    const { data, error } = await supabase
+      .from("daily_login_streak")
+      .select("*")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (error) { console.error("Get daily streak error:", error); return null; }
+    return data;
+  }
+
+  async getTodayClaim(userId: number): Promise<DailyClaim | null> {
+    const today = new Date().toISOString().slice(0, 10);
+    const { data, error } = await supabase
+      .from("daily_reward_claims")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("claim_date", today)
+      .maybeSingle();
+    if (error) { console.error("Get today claim error:", error); return null; }
+    return data;
+  }
+
+  // ── Stage 3: Weekly Quests ───────────────────────────────────────────────────
+
+  async getWeeklyQuests(): Promise<WeeklyQuest[]> {
+    const { data, error } = await supabase
+      .from("weekly_quests")
+      .select("*")
+      .order("id");
+    if (error) { console.error("Get weekly quests error:", error); return []; }
+    return data || [];
+  }
+
+  async getQuestProgress(userId: number): Promise<QuestProgress[]> {
+    const { data, error } = await supabase
+      .from("user_quest_progress")
+      .select("*")
+      .eq("user_id", userId);
+    if (error) { console.error("Get quest progress error:", error); return []; }
+    return data || [];
+  }
+
+  async claimQuestReward(userId: number, questId: number): Promise<{ claimed: boolean; xpEarned: number }> {
+    const { data: progress } = await supabase
+      .from("user_quest_progress")
+      .select("completed, claimed, current_count")
+      .eq("user_id", userId)
+      .eq("quest_id", questId)
+      .maybeSingle();
+
+    if (!progress || !progress.completed || progress.claimed) return { claimed: false, xpEarned: 0 };
+
+    const { data: quest } = await supabase
+      .from("weekly_quests")
+      .select("reward_xp")
+      .eq("id", questId)
+      .maybeSingle();
+
+    const xpEarned = quest?.reward_xp || 0;
+
+    await supabase
+      .from("user_quest_progress")
+      .update({ claimed: true })
+      .eq("user_id", userId)
+      .eq("quest_id", questId);
+
+    await this.addXPAtomic(userId, xpEarned);
+    return { claimed: true, xpEarned };
+  }
+
+  // ── Stage 3: Leaderboard ─────────────────────────────────────────────────────
+
+  async getLeaderboard(limit: number = 20): Promise<LeaderboardEntry[]> {
+    const { data: users, error } = await supabase
+      .from("users")
+      .select("id, first_name, username, total_xp")
+      .order("total_xp", { ascending: false })
+      .limit(limit);
+
+    if (error) { console.error("Get leaderboard error:", error); return []; }
+
+    const entries: LeaderboardEntry[] = [];
+    for (let i = 0; i < (users || []).length; i++) {
+      const u = (users || [])[i];
+      const { count } = await supabase
+        .from("artifact_views")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", u.id);
+      entries.push({
+        user_id: u.id,
+        first_name: u.first_name,
+        username: u.username,
+        total_xp: u.total_xp,
+        artifacts_viewed: count || 0,
+        rank: i + 1,
+      });
+    }
+    return entries;
+  }
+
+  // ── Stage 3: Collection Claims ───────────────────────────────────────────────
+
+  async claimCollectionReward(userId: number, category: ArtifactCategory): Promise<{ claimed: boolean; xpEarned: number }> {
+    const { data: existing } = await supabase
+      .from("collection_claims")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("category", category)
+      .maybeSingle();
+
+    if (existing) return { claimed: false, xpEarned: 0 };
+
+    const { data: progress } = await supabase
+      .from("user_museum_progress")
+      .select("collection_completed")
+      .eq("user_id", userId)
+      .eq("category", category)
+      .maybeSingle();
+
+    if (!progress?.collection_completed) return { claimed: false, xpEarned: 0 };
+
+    await supabase.from("collection_claims").insert([{ user_id: userId, category, reward_key: `collection_${category}` }]);
+    await this.addXPAtomic(userId, 500);
+
+    return { claimed: true, xpEarned: 500 };
+  }
+
+  async getCollectionClaims(userId: number): Promise<string[]> {
+    const { data, error } = await supabase
+      .from("collection_claims")
+      .select("category")
+      .eq("user_id", userId);
+    if (error) { console.error("Get collection claims error:", error); return []; }
+    return (data || []).map((c: { category: string }) => c.category);
+  }
+
+  // ── Utility: viewed artifact IDs ────────────────────────────────────────────
+
+  async getViewedArtifactIds(userId: number): Promise<Set<string>> {
+    const { data, error } = await supabase
+      .from("artifact_views")
+      .select("artifact_id")
+      .eq("user_id", userId);
+    if (error) { console.error("Get viewed artifacts error:", error); return new Set(); }
+    return new Set((data || []).map((v: { artifact_id: string }) => v.artifact_id));
   }
 }
 
