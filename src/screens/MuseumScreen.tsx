@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
-  Landmark, Globe, Crown, Sword, Scroll, Building2,
-  ChevronRight, ChevronLeft, X, BookOpen, Lock,
-  Sparkles, Shield, Star, CheckCircle2, Eye,
+  Globe, Crown, Sword, Scroll, Building2,
+  ChevronLeft, BookOpen, Lock,
+  Sparkles, Shield, CheckCircle2,
 } from "lucide-react";
 import { GlassCard } from "./GlassCard";
 import {
@@ -14,7 +14,6 @@ import {
   type MuseumArticle,
   type MuseumProgress,
   type ArtifactCategory,
-  type ArtifactRarity,
 } from "../lib/api";
 
 const CATEGORY_ICONS: Record<ArtifactCategory, any> = {
@@ -239,7 +238,11 @@ export function MuseumScreen({ lang, dbUser, onRefresh }: { lang: "ua" | "en"; d
                   >
                     <div className="relative aspect-[4/5] overflow-hidden">
                       <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-white/[0.03] to-white/[0.01]" style={{ boxShadow: rarity.glow ? `inset ${rarity.glow}` : undefined }}>
-                        <span className="text-6xl">{artifact.image}</span>
+                        {artifact.image.startsWith("http") ? (
+                          <img src={artifact.image} alt={artifact.title_ua} className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-6xl">{artifact.image}</span>
+                        )}
                       </div>
                       <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0f] via-[#0a0a0f]/20 to-transparent opacity-90" />
 
@@ -340,13 +343,23 @@ export function MuseumScreen({ lang, dbUser, onRefresh }: { lang: "ua" | "en"; d
                 {/* Header area */}
                 <div className="relative h-64 flex items-center justify-center" style={{ boxShadow: RARITY_META[selectedArtifact.rarity].glow ? `0 0 60px ${RARITY_META[selectedArtifact.rarity].color}20` : undefined }}>
                   <div className="absolute inset-0 bg-gradient-to-b from-white/[0.02] to-transparent" />
-                  <motion.span
-                    initial={{ scale: 0.5 }}
-                    animate={{ scale: 1 }}
-                    className="text-[120px] relative z-10"
-                  >
-                    {selectedArtifact.image}
-                  </motion.span>
+                  {selectedArtifact.image.startsWith("http") ? (
+                    <motion.img
+                      initial={{ scale: 0.8, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      src={selectedArtifact.image}
+                      alt={selectedArtifact.title_ua}
+                      className="w-full h-full object-cover relative z-10"
+                    />
+                  ) : (
+                    <motion.span
+                      initial={{ scale: 0.5 }}
+                      animate={{ scale: 1 }}
+                      className="text-[120px] relative z-10"
+                    >
+                      {selectedArtifact.image}
+                    </motion.span>
+                  )}
                   <button
                     onClick={() => setSelectedArtifact(null)}
                     className="absolute top-4 left-4 w-10 h-10 rounded-full bg-black/60 backdrop-blur-md flex items-center justify-center text-white z-20"
