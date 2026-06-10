@@ -361,24 +361,23 @@ function HomeScreen({ lang, setSelectedArtifact, setScreen }: { lang: Lang; setS
       </div>
 
       {/* Telegram Channel */}
-      <div className="px-2">
-        <GlassCard
+      <div className="px-2 flex justify-center">
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
           onClick={() => window.open("https://t.me/SITNIK_BLOG", "_blank")}
-          className="p-5 flex items-center gap-4 group cursor-pointer bg-gradient-to-r from-[#0057b7]/10 to-[#ffd700]/10"
+          className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-gradient-to-r from-[#0057b7]/10 to-[#ffd700]/10 border border-white/10 hover:border-[#0057b7]/50 transition-all group"
         >
-          <div className="w-12 h-12 rounded-2xl bg-[#0057b7] flex items-center justify-center">
-            <Send className="w-6 h-6 text-white" />
+          <div className="relative">
+            <div className="w-14 h-14 rounded-2xl bg-[#0057b7] flex items-center justify-center group-hover:bg-[#0057b7]/80 transition-colors">
+              <Send className="w-7 h-7 text-white" />
+            </div>
+            <ChevronRight className="absolute -right-1 -bottom-1 w-5 h-5 text-[#ffd700]" />
           </div>
-          <div className="flex-1">
-            <h4 className="text-base font-bold text-white">
-              {lang === "ua" ? "Телеграм канал" : "Telegram Channel"}
-            </h4>
-            <p className="text-xs text-white/50">
-              {lang === "ua" ? "Приєднуйтесь до нашої спільноти!" : "Join our community!"}
-            </p>
-          </div>
-          <ChevronRight className="w-5 h-5 text-white/40 group-hover:text-[#ffd700] group-hover:translate-x-1 transition-all" />
-        </GlassCard>
+          <span className="text-[10px] font-bold text-white/60 uppercase tracking-wider">
+            {lang === "ua" ? "Більше новин та оновлень" : "More news & updates"}
+          </span>
+        </motion.button>
       </div>
 
       {/* Featured Artifacts */}
