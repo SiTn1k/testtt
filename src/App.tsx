@@ -240,7 +240,7 @@ const TEXT: Record<Lang, any> = {
     museum: { title: "Колекція", search: "Пошук артефактів...", all: "Всі" },
     timeline: { title: "Хронологія", subtitle: "Ключові події української історії" },
     profile: { title: "Профіль", rank: "Ранг", timeSpent: "Час у музеї", totalVisits: "Візитів", viewedArtifacts: "Переглянуто", achievements: "Досягнення", donations: "Донати", nextRank: "Наступний ранг" },
-    support: { title: "Підтримка", selectAmount: "Оберіть суму", customAmount: "Інша сума", payStars: "Оплатити Stars", thankYou: "Дякуємо за підтримку!", supportMessage: "Ваш внесок допомагає зберігати історію України.", totalRaised: "Зібрано разом", donorsCount: "Доброчинців", version: "Версія 1.0.0" },
+    support: { title: "Підтримка", selectAmount: "Оберіть суму", customAmount: "Інша сума", payStars: "Оплатити Stars", thankYou: "Дякуємо за підтримку!", supportMessage: "Ваш внесок допомагає зберігати історію України.", totalRaised: "Зібрано разом", donorsCount: "Доброчинців", totalUsers: "Учасників боту", version: "Версія 1.0.0", paymentError: "Платіж не вдався. Спробуйте ще раз." },
     nav: { home: "Головна", tap: "Тап", museum: "Музей", timeline: "Час", profile: "Профіль", support: "Підтримка" },
   },
   en: {
@@ -249,7 +249,7 @@ const TEXT: Record<Lang, any> = {
     museum: { title: "Collection", search: "Search artifacts...", all: "All" },
     timeline: { title: "Timeline", subtitle: "Key events in Ukrainian history" },
     profile: { title: "Profile", rank: "Rank", timeSpent: "Time in Museum", totalVisits: "Visits", viewedArtifacts: "Artifacts Viewed", achievements: "Achievements", donations: "Donations", nextRank: "Next Rank" },
-    support: { title: "Support", selectAmount: "Select Amount", customAmount: "Custom Amount", payStars: "Pay with Stars", thankYou: "Thank you for support!", supportMessage: "Your contribution helps preserve Ukraine's history.", totalRaised: "Total Raised", donorsCount: "Donors", version: "Version 1.0.0" },
+    support: { title: "Support", selectAmount: "Select Amount", customAmount: "Custom Amount", payStars: "Pay with Stars", thankYou: "Thank you for support!", supportMessage: "Your contribution helps preserve Ukraine's history.", totalRaised: "Total Raised", donorsCount: "Donors", totalUsers: "Bot Members", version: "Version 1.0.0", paymentError: "Payment failed. Please try again." },
     nav: { home: "Home", tap: "Tap", museum: "Museum", timeline: "Timeline", profile: "Profile", support: "Support" },
   },
 };
@@ -558,9 +558,29 @@ function TimelineScreen({ lang }: any) {
   );
 }
 
-function ProfileScreen({ lang, setLang, telegramUser, dbUser, stats, onRefresh }: any) {
+function ProfileScreen({ lang, setLang, telegramUser, dbUser, stats, onRefresh, sessionStartIso }: any) {
   const t = TEXT[lang].profile;
   const avatarUrl = telegramUser?.photo_url || "https://images.unsplash.com/photo-1587397845856-e6cf49176c70";
+  const [liveMinutes, setLiveMinutes] = useState(0);
+
+  // Update live session minutes every 30 seconds
+  useEffect(() => {
+    const calc = () => {
+      if (!sessionStartIso) return;
+      setLiveMinutes(Math.floor((Date.now() - new Date(sessionStartIso).getTime()) / 60000));
+    };
+    calc();
+    const iv = setInterval(calc, 30_000);
+    return () => clearInterval(iv);
+  }, [sessionStartIso]);
+
+  const totalMinutesLive = (stats?.totalMinutes || 0) + liveMinutes;
+  const formatTime = (mins: number) => {
+    if (mins < 60) return `${mins}хв`;
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return m > 0 ? `${h}г ${m}хв` : `${h}г`;
+  };
 
   const xpPercent = stats ? Math.min((stats.totalXP / stats.nextLevelXP) * 100, 100) : 0;
 
@@ -616,7 +636,7 @@ function ProfileScreen({ lang, setLang, telegramUser, dbUser, stats, onRefresh }
       {/* Stats Grid */}
       <div className="grid grid-cols-3 gap-3">
         {[
-          { icon: Clock, label: t.timeSpent, value: stats ? `${stats.totalMinutes}m` : "0m" },
+          { icon: Clock, label: t.timeSpent, value: formatTime(totalMinutesLive) },
           { icon: Landmark, label: t.totalVisits, value: stats?.visitCount || 0 },
           { icon: ImageIcon, label: t.viewedArtifacts, value: stats?.artifactsViewed || 0 },
         ].map((stat, i) => (
@@ -683,12 +703,12 @@ function SupportScreen({ lang, telegramUser, dbUser, onDonated }: any) {
   const [customAmount, setCustomAmount] = useState("");
   const [isSuccess, setIsSuccess] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [globalStats, setGlobalStats] = useState<{ totalRaised: number; donorsCount: number }>({ totalRaised: 0, donorsCount: 0 });
+  const [paymentError, setPaymentError] = useState("");
+  const [globalStats, setGlobalStats] = useState<{ totalRaised: number; donorsCount: number; totalUsers: number }>({ totalRaised: 0, donorsCount: 0, totalUsers: 0 });
   const successAmountRef = useRef<number>(0);
 
   const amounts = [10, 25, 50, 100];
 
-  // Load global donation stats from DB on mount
   useEffect(() => {
     const loadStats = async () => {
       try {
@@ -719,58 +739,61 @@ function SupportScreen({ lang, telegramUser, dbUser, onDonated }: any) {
     if (amount <= 0) return;
 
     setIsProcessing(true);
+    setPaymentError("");
     successAmountRef.current = amount;
 
     try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const invoiceRes = await fetch(`${supabaseUrl}/functions/v1/stars-invoice`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${supabaseKey}`,
+          apikey: supabaseKey,
+        },
+        body: JSON.stringify({
+          title: lang === "ua" ? "Донат музею" : "Museum Donation",
+          description: lang === "ua"
+            ? `Підтримка музею — ${amount} Stars`
+            : `Support the museum — ${amount} Stars`,
+          prices: [{ label: "Donation", amount: Math.round(amount) }],
+          payload: `donation_${dbUser.id}_${Date.now()}`,
+        }),
+      });
+
+      const invoiceData = await invoiceRes.json();
+      if (!invoiceRes.ok || invoiceData.error || !invoiceData.invoice_link) {
+        console.error("Invoice creation failed:", invoiceData.error);
+        setPaymentError(t.paymentError);
+        setIsProcessing(false);
+        return;
+      }
+
+      const { invoice_link } = invoiceData;
+
       if (window.Telegram?.WebApp) {
         const WebApp = window.Telegram.WebApp;
-
-        // Create invoice via edge function
-        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-        const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-        const invoiceRes = await fetch(`${supabaseUrl}/functions/v1/stars-invoice`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${supabaseKey}`,
-            apikey: supabaseKey,
-          },
-          body: JSON.stringify({
-            title: lang === "ua" ? "Донат музею" : "Museum Donation",
-            description: lang === "ua"
-              ? `Підтримка музею — ${amount} Stars`
-              : `Support the museum — ${amount} Stars`,
-            prices: [{ label: "Donation", amount }],
-            payload: `donation_${dbUser.id}_${Date.now()}`,
-          }),
-        });
-
-        if (!invoiceRes.ok) {
-          console.error("Invoice creation failed");
-          setIsProcessing(false);
-          return;
-        }
-
-        const { invoice_link, error: invError } = await invoiceRes.json();
-        if (invError || !invoice_link) {
-          console.error("No invoice link:", invError);
-          setIsProcessing(false);
-          return;
-        }
-
-        // Open the Stars payment dialog
         WebApp.openInvoice(invoice_link, async (status: string) => {
-          if (status === "paid") {
-            await museumAPI.createDonation(dbUser.id, amount, "XTR", "telegram_stars");
-            await refreshGlobalStats();
-            onDonated();
-            setIsSuccess(true);
-            setTimeout(() => setIsSuccess(false), 4000);
-            if (WebApp.HapticFeedback) {
-              WebApp.HapticFeedback.notificationOccurred("success");
+          try {
+            if (status === "paid") {
+              await museumAPI.createDonation(dbUser.id, amount, "XTR", "telegram_stars");
+              await refreshGlobalStats();
+              onDonated();
+              setIsSuccess(true);
+              setTimeout(() => setIsSuccess(false), 4000);
+              if (WebApp.HapticFeedback) {
+                WebApp.HapticFeedback.notificationOccurred("success");
+              }
+            } else if (status === "failed") {
+              setPaymentError(t.paymentError);
             }
+          } catch (err) {
+            console.error("Payment callback error:", err);
+            setPaymentError(t.paymentError);
+          } finally {
+            setIsProcessing(false);
           }
-          setIsProcessing(false);
         });
       } else {
         // Outside Telegram — test mode
@@ -783,7 +806,7 @@ function SupportScreen({ lang, telegramUser, dbUser, onDonated }: any) {
       }
     } catch (err) {
       console.error("Stars payment failed:", err);
-    } finally {
+      setPaymentError(t.paymentError);
       setIsProcessing(false);
     }
   };
@@ -808,16 +831,24 @@ function SupportScreen({ lang, telegramUser, dbUser, onDonated }: any) {
   return (
     <div className="space-y-6 pb-24">
       {/* Real Stats from DB */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         <GlassCard className="p-4 relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-2 opacity-10"><TrendingUp className="w-12 h-12 text-[#ffd700]" /></div>
-          <div className="text-[10px] uppercase tracking-wider text-white/40 mb-1">{t.totalRaised}</div>
-          <div className="text-xl font-bold text-white">{globalStats.totalRaised.toLocaleString()}</div>
+          <div className="absolute top-0 right-0 p-2 opacity-10"><TrendingUp className="w-10 h-10 text-[#ffd700]" /></div>
+          <div className="text-[9px] uppercase tracking-wider text-white/40 mb-1">{t.totalRaised}</div>
+          <div className="text-lg font-bold text-white">{globalStats.totalRaised.toLocaleString()}</div>
+          <div className="text-[9px] text-white/30 mt-0.5">Stars</div>
         </GlassCard>
         <GlassCard className="p-4 relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-2 opacity-10"><User className="w-12 h-12 text-[#0057b7]" /></div>
-          <div className="text-[10px] uppercase tracking-wider text-white/40 mb-1">{t.donorsCount}</div>
-          <div className="text-xl font-bold text-white">{globalStats.donorsCount.toLocaleString()}</div>
+          <div className="absolute top-0 right-0 p-2 opacity-10"><Heart className="w-10 h-10 text-[#0057b7]" /></div>
+          <div className="text-[9px] uppercase tracking-wider text-white/40 mb-1">{t.donorsCount}</div>
+          <div className="text-lg font-bold text-white">{globalStats.donorsCount.toLocaleString()}</div>
+          <div className="text-[9px] text-white/30 mt-0.5">{lang === "ua" ? "осіб" : "people"}</div>
+        </GlassCard>
+        <GlassCard className="p-4 relative overflow-hidden group">
+          <div className="absolute top-0 right-0 p-2 opacity-10"><User className="w-10 h-10 text-[#ffd700]" /></div>
+          <div className="text-[9px] uppercase tracking-wider text-white/40 mb-1">{t.totalUsers}</div>
+          <div className="text-lg font-bold text-white">{globalStats.totalUsers.toLocaleString()}</div>
+          <div className="text-[9px] text-white/30 mt-0.5">{lang === "ua" ? "учасників" : "members"}</div>
         </GlassCard>
       </div>
 
@@ -856,6 +887,11 @@ function SupportScreen({ lang, telegramUser, dbUser, onDonated }: any) {
             </div>
             {isProcessing ? <Loader2 className="w-5 h-5 text-white animate-spin" /> : <ChevronRight className="w-5 h-5 text-white/60" />}
           </motion.button>
+          {paymentError && (
+            <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} className="mt-2 px-4 py-2 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-400 text-center font-medium">
+              {paymentError}
+            </motion.div>
+          )}
         </div>
       </div>
 
@@ -1107,18 +1143,23 @@ function TapScreen({ lang, dbUser, stats, onRefresh }: any) {
         }
 
         WebApp.openInvoice(invoice_link, async (status: string) => {
-          if (status === "paid") {
-            const result = await museumAPI.buyAutoclicker(dbUser.id, option.durationMin);
-            if (result.success) {
-              setTapState(prev => prev ? { ...prev, autoclicker_until: result.until } : prev);
-              await museumAPI.createDonation(dbUser.id, option.costStars, "XTR", `telegram_stars_autoclicker_${option.key}`);
-              onRefresh();
-              if (WebApp.HapticFeedback) {
-                WebApp.HapticFeedback.notificationOccurred("success");
+          try {
+            if (status === "paid") {
+              const result = await museumAPI.buyAutoclicker(dbUser.id, option.durationMin);
+              if (result.success) {
+                setTapState(prev => prev ? { ...prev, autoclicker_until: result.until } : prev);
+                await museumAPI.createDonation(dbUser.id, option.costStars, "XTR", `telegram_stars_autoclicker_${option.key}`);
+                onRefresh();
+                if (WebApp.HapticFeedback) {
+                  WebApp.HapticFeedback.notificationOccurred("success");
+                }
               }
             }
+          } catch (err) {
+            console.error("Autoclicker payment callback error:", err);
+          } finally {
+            setIsBuyingAutoclicker(false);
           }
-          setIsBuyingAutoclicker(false);
         });
       } else {
         // Test mode outside Telegram
@@ -1197,19 +1238,24 @@ function TapScreen({ lang, dbUser, stats, onRefresh }: any) {
         }
 
         WebApp.openInvoice(invoice_link, async (status: string) => {
-          if (status === "paid") {
-            const result = await museumAPI.buyArtifactStars(dbUser.id, artifact.key);
-            if (result.success) {
-              setOwnedArtifacts(prev => [...prev, artifact.key]);
-              setTapState(prev => prev ? { ...prev, active_artifact: artifact.key } : prev);
-              await museumAPI.createDonation(dbUser.id, artifact.costStars, "XTR", `telegram_stars_artifact_${artifact.key}`);
-              onRefresh();
-              if (WebApp.HapticFeedback) {
-                WebApp.HapticFeedback.notificationOccurred("success");
+          try {
+            if (status === "paid") {
+              const result = await museumAPI.buyArtifactStars(dbUser.id, artifact.key);
+              if (result.success) {
+                setOwnedArtifacts(prev => [...prev, artifact.key]);
+                setTapState(prev => prev ? { ...prev, active_artifact: artifact.key } : prev);
+                await museumAPI.createDonation(dbUser.id, artifact.costStars, "XTR", `telegram_stars_artifact_${artifact.key}`);
+                onRefresh();
+                if (WebApp.HapticFeedback) {
+                  WebApp.HapticFeedback.notificationOccurred("success");
+                }
               }
             }
+          } catch (err) {
+            console.error("Artifact payment callback error:", err);
+          } finally {
+            setBuyingArtifact(null);
           }
-          setBuyingArtifact(null);
         });
       } else {
         // Test mode
@@ -1530,6 +1576,13 @@ export default function App() {
   const [stats, setStats] = useState<UserStats | null>(null);
   const [loading, setLoading] = useState(true);
   const sessionIdRef = useRef<number | null>(null);
+  const sessionStartIsoRef = useRef<string | null>(null);
+  // Ref always holds the latest dbUser to avoid stale closure in cleanup/intervals
+  const dbUserRef = useRef<DbUser | null>(null);
+
+  useEffect(() => {
+    dbUserRef.current = dbUser;
+  }, [dbUser]);
 
   // ── Init Telegram + Auth + Session ────────────────────────────────────────
 
@@ -1542,18 +1595,16 @@ export default function App() {
 
         if (user) {
           setTelegramUser(user);
-          // Set language from Telegram
           if (user.language_code === "uk" || user.language_code === "ua") setLang("ua");
 
-          // Auth user in DB
           const profile = await museumAPI.authUser(user);
           setDbUser(profile);
+          dbUserRef.current = profile;
 
-          // Start session
           const sid = await museumAPI.startSession(profile.id);
           sessionIdRef.current = sid;
+          sessionStartIsoRef.current = new Date().toISOString();
 
-          // Load stats
           const s = await museumAPI.getStats(profile.id, lang);
           setStats(s);
         }
@@ -1567,12 +1618,28 @@ export default function App() {
     init();
 
     return () => {
-      // End session on unmount
-      if (sessionIdRef.current && dbUser) {
-        museumAPI.endSession(sessionIdRef.current, dbUser.id).catch(console.error);
+      // Use refs to access latest values — avoids stale closure
+      const sid = sessionIdRef.current;
+      const user = dbUserRef.current;
+      if (sid && user) {
+        museumAPI.endSession(sid, user.id).catch(console.error);
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Periodic session progress save (every 60s) ────────────────────────────
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const sid = sessionIdRef.current;
+      const startIso = sessionStartIsoRef.current;
+      if (sid && startIso) {
+        museumAPI.updateSessionProgress(sid, startIso).catch(console.error);
+      }
+    }, 60_000);
+
+    return () => clearInterval(interval);
   }, []);
 
   // ── Refresh stats when screen changes to profile ─────────────────────────
@@ -1643,7 +1710,7 @@ export default function App() {
               {screen === "tap" && <TapScreen lang={lang} dbUser={dbUser} stats={stats} onRefresh={refreshStats} />}
               {screen === "museum" && <MuseumScreen lang={lang} setSelectedArtifact={setSelectedArtifact} onArtifactView={handleArtifactView} />}
               {screen === "timeline" && <TimelineScreen lang={lang} />}
-              {screen === "profile" && <ProfileScreen lang={lang} setLang={setLang} telegramUser={telegramUser} dbUser={dbUser} stats={stats} onRefresh={refreshStats} />}
+              {screen === "profile" && <ProfileScreen lang={lang} setLang={setLang} telegramUser={telegramUser} dbUser={dbUser} stats={stats} onRefresh={refreshStats} sessionStartIso={sessionStartIsoRef.current} />}
               {screen === "support" && <SupportScreen lang={lang} telegramUser={telegramUser} dbUser={dbUser} onDonated={handleDonated} />}
             </motion.div>
           </AnimatePresence>
