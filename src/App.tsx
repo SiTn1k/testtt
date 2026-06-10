@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { initTelegram, getTelegramUser } from "./lib/telegram";
 import { museumAPI, TAP_LEVELS, MAX_TAP_LEVEL, AUTOCLICKER_OPTIONS, TAP_ARTIFACTS, STARTER_ARTIFACT } from "./lib/api";
 import type { UserStats, TapGameState, TapArtifact, AutoclikerOption } from "./lib/api";
+import { TIMELINE_EVENT_DETAILS } from "./lib/timeline-data";
+import type { TimelineEventDetail } from "./lib/timeline-data";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Home as HomeIcon,
@@ -35,6 +37,7 @@ import {
   ArrowUpCircle,
   Timer,
   ShoppingBag,
+  BookOpen,
 } from "lucide-react";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
@@ -525,6 +528,8 @@ function MuseumScreen({ lang, setSelectedArtifact, onArtifactView }: any) {
 
 function TimelineScreen({ lang }: any) {
   const t = TEXT[lang].timeline;
+  const [selectedEvent, setSelectedEvent] = useState<TimelineEventDetail | null>(null);
+
   return (
     <div className="space-y-8 pb-32 pt-4 px-1">
       <div className="space-y-1">
@@ -532,28 +537,107 @@ function TimelineScreen({ lang }: any) {
         <h1 className="text-4xl font-black text-white tracking-tighter">{t.title}</h1>
         <p className="text-sm text-white/40 font-medium tracking-tight leading-relaxed">{t.subtitle}</p>
       </div>
-      <div className="relative space-y-12 before:absolute before:inset-0 before:ml-5 before:-translate-x-px before:h-full before:w-0.5 before:bg-gradient-to-b before:from-[#ffd700] before:via-[#0057b7] before:to-transparent before:opacity-20">
-        {TIMELINE_EVENTS.map((event, i) => {
-          const Icon = event.icon;
-          return (
-            <motion.div key={event.id} initial={{ opacity: 0, x: -30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1, duration: 0.8 }} className="relative flex items-start gap-8 group">
-              <div className="flex-shrink-0 z-10">
-                <div className="w-10 h-10 rounded-2xl bg-[#0a0a0f] border-2 border-[#ffd700]/30 flex items-center justify-center group-hover:border-[#ffd700] group-hover:scale-110 transition-all duration-500 shadow-[0_0_20px_rgba(255,215,0,0.1)]"><Icon className="w-5 h-5 text-[#ffd700]" /></div>
+
+      <div className="flex justify-center py-2">
+        <div className="w-[120px] h-1 rounded-full overflow-hidden flex">
+          <div className="flex-1 bg-[#0057b7]" />
+          <div className="flex-1 bg-[#ffd700]" />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {TIMELINE_EVENT_DETAILS.map((event, i) => (
+          <motion.div
+            key={event.id}
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: i * 0.08, duration: 0.5 }}
+          >
+            <GlassCard
+              onClick={() => setSelectedEvent(event)}
+              className="cursor-pointer overflow-hidden p-0 h-full flex flex-col"
+            >
+              <div className="h-1 rounded-t-[24px]" style={{ backgroundColor: event.accentColor }} />
+              <div className="p-5 flex flex-col flex-1">
+                <span className="text-xs font-black text-[#ffd700] uppercase tracking-[0.15em] mb-2">{event.year}</span>
+                <h3 className="text-base font-black text-white mb-2 tracking-tight leading-tight">{event.title[lang]}</h3>
+                <p className="text-[11px] text-white/40 leading-relaxed font-medium tracking-tight mb-4 line-clamp-2">{event.description[lang]}</p>
+                <div className="mt-auto pt-3 border-t border-white/5 flex items-center gap-2 text-[11px] text-[#ffd700] font-bold">
+                  <BookOpen className="w-3.5 h-3.5" />
+                  <span>{lang === "ua" ? "Детальніше" : "Read more"}</span>
+                </div>
               </div>
-              <div className="flex-1">
-                <GlassCard className="p-6 group-hover:bg-white/[0.05] transition-colors duration-500">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-sm font-black text-[#ffd700] uppercase tracking-widest">{event.year}</span>
-                    <div className="px-2.5 py-1 bg-white/5 rounded-lg border border-white/5 text-[9px] font-black text-white/20 uppercase tracking-widest">{event.era}</div>
+            </GlassCard>
+          </motion.div>
+        ))}
+      </div>
+
+      <AnimatePresence>
+        {selectedEvent && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-[#050505]/95 backdrop-blur-xl flex items-start justify-center overflow-y-auto"
+            onClick={() => setSelectedEvent(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ duration: 0.25 }}
+              className="w-full max-w-2xl bg-[#0a0a0f] border border-white/10 rounded-3xl my-6 mx-4 overflow-hidden"
+              onClick={(e: any) => e.stopPropagation()}
+            >
+              <div className="sticky top-0 z-10 flex items-center justify-between p-4 bg-[#0a0a0f]/90 backdrop-blur-xl border-b border-white/5">
+                <span className="text-xs font-black text-[#ffd700] uppercase tracking-[0.15em]">{selectedEvent.year}</span>
+                <button
+                  onClick={() => setSelectedEvent(null)}
+                  className="w-9 h-9 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white hover:bg-[#ffd700] hover:text-[#0a0a0f] transition-all"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-6">
+                <h2 className="text-2xl font-black text-white tracking-tight leading-tight">{selectedEvent.title[lang]}</h2>
+
+                {selectedEvent.images.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="rounded-2xl overflow-hidden bg-white/5">
+                      <img
+                        src={selectedEvent.images[0]}
+                        alt={selectedEvent.title[lang]}
+                        className="w-full max-h-[300px] object-cover"
+                        onError={(e: any) => { e.target.style.display = "none"; }}
+                      />
+                    </div>
+                    {selectedEvent.images.length > 1 && (
+                      <div className="flex gap-2 overflow-x-auto pb-1">
+                        {selectedEvent.images.slice(1).map((img, idx) => (
+                          <img
+                            key={idx}
+                            src={img}
+                            alt=""
+                            className="w-16 h-16 rounded-xl object-cover flex-shrink-0 border-2 border-white/10"
+                            onError={(e: any) => { e.target.style.display = "none"; }}
+                          />
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  <h3 className="text-lg font-black text-white mb-2 tracking-tight group-hover:text-[#ffd700] transition-colors">{event.title[lang]}</h3>
-                  <p className="text-xs text-white/40 leading-relaxed font-medium tracking-tight">{event.description[lang]}</p>
-                </GlassCard>
+                )}
+
+                <div
+                  className="prose prose-invert prose-sm max-w-none [&_h3]:text-[#ffd700] [&_h3]:text-lg [&_h3]:font-bold [&_h3]:mt-6 [&_h3]:mb-3 [&_h4]:text-[#ffd700] [&_h4]:text-base [&_h4]:font-bold [&_h4]:mt-5 [&_h4]:mb-2 [&_h5]:text-[#ffd700]/80 [&_h5]:text-sm [&_h5]:font-bold [&_h5]:mt-4 [&_h5]:mb-2 [&_p]:text-white/60 [&_p]:text-sm [&_p]:leading-relaxed [&_p]:mb-3 [&_strong]:text-[#ffd700] [&_strong]:font-semibold [&_ul]:space-y-1 [&_ul]:mb-3 [&_li]:text-white/60 [&_li]:text-sm [&_blockquote]:border-l-[3px] [&_blockquote]:border-[#ffd700] [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-white/70 [&_blockquote]:text-sm [&_blockquote]:my-4 [&_table]:w-full [&_table]:text-sm [&_th]:text-[#ffd700] [&_th]:p-3 [&_th]:text-left [&_th]:border [&_th]:border-white/10 [&_th]:bg-white/5 [&_td]:text-white/60 [&_td]:p-3 [&_td]:border [&_td]:border-white/10"
+                  dangerouslySetInnerHTML={{ __html: lang === "ua" ? selectedEvent.contentUA : selectedEvent.contentEN }}
+                />
               </div>
             </motion.div>
-          );
-        })}
-      </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
