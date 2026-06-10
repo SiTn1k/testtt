@@ -171,7 +171,7 @@ const ARTIFACTS: Artifact[] = [
   },
 ];
 
-const TEXT: Record<Lang, any> = {
+const TEXT: Record<Lang, Record<string, unknown>> = {
   ua: {
     home: { title: "Віртуальний Музей України", subtitle: "Подорож крізь тисячоліття історії", featured: "Рекомендовані", explore: "Досліджуйте", artifacts: "артефактів", viewAll: "Дивитись всі" },
     tap: { title: "Тапалка", perClick: "XP за клік", totalTaps: "Всього тапів", level: "Рівень", upgrade: "Покращити", upgradeCost: "Вартість", maxLevel: `Макс рівень ${MAX_TAP_LEVEL}!`, autoclicker: "Автоклікер", autoclickerActive: "Автоклікер!", autoclickerTimeLeft: "Залишилось", autoclickerBuy: "Купити автоклікер", autoclickerExtends: "Час додається до поточного", notEnoughXP: "Недостатньо XP", noTable: "Таблиця tap_game_state не знайдена.", shop: "Прокачка", shopDesc: "Бонуси від усіх куплених артефактів складаються", buyXP: "Купити за XP", buyStars: "Купити за Stars", owned: "Куплено", equip: "Образ", equipped: "Образ", artifactBonus: "бонус" },
@@ -194,7 +194,14 @@ const TEXT: Record<Lang, any> = {
 
 // ─── Components ────────────────────────────────────────────────────────────────
 
-function GlassCard({ children, className = "", onClick, hover = true }: any) {
+interface GlassCardProps {
+  children: React.ReactNode;
+  className?: string;
+  onClick?: () => void;
+  hover?: boolean;
+}
+
+function GlassCard({ children, className = "", onClick, hover = true }: GlassCardProps) {
   return (
     <motion.div
       whileHover={onClick && hover ? { y: -4, scale: 1.02 } : {}}
@@ -434,7 +441,7 @@ function TimelineScreen({ lang }: { lang: Lang }) {
               exit={{ scale: 0.95, opacity: 0 }}
               transition={{ duration: 0.25 }}
               className="w-full max-w-2xl bg-[#0a0a0f] border border-white/10 rounded-3xl my-6 mx-4 overflow-hidden"
-              onClick={(e: any) => e.stopPropagation()}
+              onClick={(e: React.MouseEvent) => e.stopPropagation()}
             >
               <div className="sticky top-0 z-10 flex items-center justify-between p-4 bg-[#0a0a0f]/90 backdrop-blur-xl border-b border-white/5">
                 <span className="text-xs font-black text-[#ffd700] uppercase tracking-[0.15em]">{selectedEvent.year}</span>
@@ -456,7 +463,7 @@ function TimelineScreen({ lang }: { lang: Lang }) {
                         src={selectedEvent.images[0]}
                         alt={selectedEvent.title[lang]}
                         className="w-full max-h-[300px] object-cover"
-                        onError={(e: any) => { e.target.style.display = "none"; }}
+                        onError={(e: React.SyntheticEvent<HTMLImageElement>) => { e.currentTarget.style.display = "none"; }}
                       />
                     </div>
                     {selectedEvent.images.length > 1 && (
@@ -467,7 +474,7 @@ function TimelineScreen({ lang }: { lang: Lang }) {
                             src={img}
                             alt=""
                             className="w-16 h-16 rounded-xl object-cover flex-shrink-0 border-2 border-white/10"
-                            onError={(e: any) => { e.target.style.display = "none"; }}
+                            onError={(e: React.SyntheticEvent<HTMLImageElement>) => { e.currentTarget.style.display = "none"; }}
                           />
                         ))}
                       </div>
@@ -741,9 +748,10 @@ function TapScreen({ lang, dbUser, stats, onRefresh }: { lang: Lang; dbUser: DbU
         setTaps(state.total_taps || 0);
         const owned = await museumAPI.getOwnedArtifacts(dbUser.id);
         setOwnedArtifacts(owned);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Tap state init error:", err);
-        if (err?.message?.includes("Could not find") || err?.code === "PGRST205" || err?.details?.includes("not found")) {
+        const error = err as { message?: string; code?: string; details?: string };
+        if (error?.message?.includes("Could not find") || error?.code === "PGRST205" || error?.details?.includes("not found")) {
           setTableExists(false);
         }
       }
@@ -1606,4 +1614,3 @@ export default function App() {
     </div>
   );
 }
-
