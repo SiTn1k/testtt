@@ -456,7 +456,7 @@ export class MuseumAPI {
       level: RANK_THRESHOLDS.findIndex((r) => liveXP >= r.minXP) + 1,
       rankKey: rank.key,
       rankName: rank.name,
-      nextLevelXP: rank.nextXP,
+      nextLevelXP: rank.nextLevelXP,
       achievements,
     };
   }
