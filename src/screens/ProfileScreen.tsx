@@ -5,7 +5,7 @@ import {
   Zap, Star, Trophy, Clock, Landmark, ImageIcon,
   Heart, TrendingUp, Coins, Crown, Award, CheckCircle2,
   Gift, Flame, Users, Target, Medal, ChevronRight, ChevronLeft,
-  Swords, Shield, BookOpen, Scroll,
+  Swords, Shield, BookOpen, Scroll, Send,
 } from "lucide-react";
 import { GlassCard } from "./GlassCard";
 import {
@@ -275,24 +275,24 @@ export function ProfileScreen({
       </motion.div>
 
       {/* Telegram Channel */}
-      <motion.div whileTap={{ scale: 0.97 }}>
-        <GlassCard
+      <motion.div
+        whileTap={{ scale: 0.95 }}
+        className="flex justify-center"
+      >
+        <button
           onClick={() => window.open("https://t.me/SITNIK_BLOG", "_blank")}
-          className="p-4 cursor-pointer bg-gradient-to-r from-[#0057b7]/10 to-[#ffd700]/10"
+          className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-gradient-to-r from-[#0057b7]/10 to-[#ffd700]/10 border border-white/10 hover:border-[#0057b7]/50 transition-all group"
         >
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-2xl bg-[#0057b7]">
-              <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.06-.14-.04-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .37z"/>
-              </svg>
+          <div className="relative">
+            <div className="w-12 h-12 rounded-2xl bg-[#0057b7] flex items-center justify-center group-hover:bg-[#0057b7]/80 transition-colors">
+              <Send className="w-6 h-6 text-white" />
             </div>
-            <div className="flex-1">
-              <span className="text-sm font-bold text-white">{lang === "ua" ? "Телеграм канал" : "Telegram Channel"}</span>
-              <p className="text-[10px] text-white/40">{lang === "ua" ? "Приєднуйтесь до нашої спільноти!" : "Join our community!"}</p>
-            </div>
-            <ChevronRight className="w-4 h-4 text-white/20" />
+            <ChevronRight className="absolute -right-1 -bottom-1 w-4 h-4 text-[#ffd700]" />
           </div>
-        </GlassCard>
+          <span className="text-[10px] font-bold text-white/60 uppercase tracking-wider">
+            {lang === "ua" ? "Більше новин та оновлень" : "More news & updates"}
+          </span>
+        </button>
       </motion.div>
 
       {/* Total Donated */}
@@ -422,7 +422,10 @@ function ReferralScreen({ lang, onBack, stats, dbUser }: { lang: "ua" | "en"; on
   }[lang as "ua" | "en"];
 
   const [copied, setCopied] = useState(false);
-  const referralLink = dbUser ? `https://t.me/ukraine_museum_bot?startapp=ref_${dbUser.telegram_id}` : "";
+  // Direct Mini App link format: https://t.me/bot/appname?startapp=ref_123
+  // Change "app" to your actual Mini App name registered in @BotFather
+  const MINI_APP_NAME = "app"; // Update this if your Mini App has a different name
+  const referralLink = dbUser ? `https://t.me/ukraine_museum_bot/${MINI_APP_NAME}?startapp=ref_${dbUser.telegram_id}` : "";
 
   const handleCopy = () => {
     navigator.clipboard.writeText(referralLink);
