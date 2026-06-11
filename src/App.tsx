@@ -1654,4 +1654,193 @@ export default function App() {
                       <button className="w-10 h-10 rounded-full bg-black/60 backdrop-blur-md flex items-center justify-center text-white"><Bookmark className="w-4 h-4" /></button>
                     </div>
                   </div>
-                 
+                  <div className="absolute bottom-4 left-4 right-4">
+                    <GlassCard className="p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="px-2 py-1 rounded-full bg-[#ffd700]/20 text-[#ffd700] text-xs font-medium">{selectedArtifact.year}</div>
+                        <div className="px-2 py-1 rounded-full bg-[#0057b7]/20 text-[#0057b7] text-xs font-medium">{selectedArtifact.category}</div>
+                      </div>
+                      <h1 className="text-2xl font-bold text-white mb-1">{selectedArtifact.title[lang]}</h1>
+                      <p className="text-sm text-white/60">{selectedArtifact.era}</p>
+                    </GlassCard>
+                  </div>
+                </div>
+                <div className="p-4 space-y-5 pb-8">
+                  <div>
+                    <h2 className="text-xs uppercase tracking-wider text-white/50 mb-3 font-semibold">{lang === "ua" ? "Опис" : "Description"}</h2>
+                    <p className="text-sm text-white/80 leading-relaxed">{selectedArtifact.description[lang]}</p>
+                  </div>
+                  {/* Related Artifacts */}
+                  <div>
+                    <h2 className="text-xs uppercase tracking-wider text-white/50 mb-3 font-semibold">{lang === "ua" ? "Схожі артефакти" : "Related Artifacts"}</h2>
+                    <div className="grid grid-cols-2 gap-3">
+                      {ARTIFACTS.filter((a) => a.id !== selectedArtifact.id && (a.era === selectedArtifact.era || a.category === selectedArtifact.category))
+                        .slice(0, 4)
+                        .map((artifact) => (
+                          <div key={artifact.id} onClick={() => { setSelectedArtifact(artifact); handleArtifactView(artifact.id); }} className="cursor-pointer">
+                            <GlassCard className="overflow-hidden hover:border-white/20 transition-all">
+                              <div className="relative h-28 overflow-hidden">
+                                <img src={artifact.image} alt={artifact.title[lang]} className="w-full h-full object-cover" />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                                <div className="absolute bottom-2 left-2 right-2">
+                                  <h3 className="text-white font-semibold text-xs mb-0.5 line-clamp-1">{artifact.title[lang]}</h3>
+                                  <p className="text-white/60 text-[10px]">{artifact.year}</p>
+                                </div>
+                              </div>
+                            </GlassCard>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                  <button className="w-full py-4 rounded-2xl bg-gradient-to-r from-[#0057b7] to-[#ffd700] text-white font-semibold text-sm shadow-lg active:scale-95 flex items-center justify-center gap-2">
+                    <Play className="w-4 h-4" />
+                    {lang === "ua" ? "Віртуальний 3D перегляд" : "Virtual 3D View"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Gamification Modals */}
+      <ParticleSystem particles={particles} onComplete={() => setParticles([])} />
+
+      <AnimatePresence>
+        {showLuckySpin && (
+          <LuckySpin
+            lang={lang}
+            canSpin={freeSpins > 0}
+            costXP={100}
+            onSpin={(reward) => {
+              triggerHapticNotification('success');
+              setFreeSpins(prev => Math.max(0, prev - 1));
+              if (reward.type === 'xp') {
+                if (dbUser) {
+                  museumAPI.addXP(dbUser.id, reward.value).then(refreshStats);
+                }
+              }
+            }}
+            onPurchaseSpin={() => {
+              if (dbUser && (dbUser.total_xp || 0) >= 100) {
+                museumAPI.addXP(dbUser.id, -100).then(() => {
+                  setFreeSpins(prev => prev + 1);
+                  refreshStats();
+                });
+              }
+            }}
+            onClose={() => setShowLuckySpin(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showDailyRewards && dbUser && (
+          <DailyRewards
+            lang={lang}
+            consecutiveDays={10}
+            lastClaimDate={null}
+            onClaim={(reward) => {
+              museumAPI.addXP(dbUser.id, reward.xp).then(refreshStats);
+            }}
+            onClose={() => setShowDailyRewards(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showAchievements && (
+          <AchievementsModal
+            lang={lang}
+            unlockedKeys={[]}
+            stats={{ totalTaps: stats?.totalTaps || 0, totalXP: dbUser?.total_xp || 0, artifactsCount: 0, referralsCount: 0, streak: 0 }}
+            onClose={() => setShowAchievements(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showLeaderboard && (
+          <Leaderboard
+            lang={lang}
+            myRank={1}
+            entries={[
+              { rank: 1, userId: '1', telegramId: 1, firstName: 'User 1', totalXP: 10000, totalTaps: 5000, streak: 7 },
+              { rank: 2, userId: '2', telegramId: 2, firstName: 'User 2', totalXP: 8000, totalTaps: 4000, streak: 5 },
+              { rank: 3, userId: '3', telegramId: 3, firstName: 'User 3', totalXP: 6000, totalTaps: 3000, streak: 3 },
+            ]}
+            onClose={() => setShowLeaderboard(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showGuilds && (
+          <Guilds
+            lang={lang}
+            currentGuild={undefined}
+            guilds={[
+              { id: '1', name: 'Козацька Вольниця', description: 'Гільдія вільних людей', icon: '⚔️', color: '#3b82f6', leaderId: '1', totalMembers: 25, maxMembers: 50, totalXP: 50000, weeklyXP: 5000, rank: 1, trophies: 10, joinType: 'open' },
+            ]}
+            onJoinGuild={() => {}}
+            onCreateGuild={() => {}}
+            onLeaveGuild={() => {}}
+            onClose={() => setShowGuilds(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showLimitedArtifacts && dbUser && (
+          <LimitedArtifactsModal
+            lang={lang}
+            artifacts={[
+              { id: '1', name: { ua: 'Тризуб Слави', en: 'Trident of Glory' }, description: { ua: 'Легендарний артефакт', en: 'Legendary artifact' }, image: '/images/tap-trident-independence.jpg', xpBonus: 1000, rarity: 'legendary', availableUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), totalSupply: 100, claimedCount: 50, costStars: 500 },
+            ]}
+            userXP={dbUser.total_xp || 0}
+            userStars={0}
+            onClaim={() => {}}
+            onClose={() => setShowLimitedArtifacts(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showSeasonPass && (
+          <SeasonPass
+            lang={lang}
+            season={{
+              id: '1',
+              name: { ua: 'Сезон Відродження', en: 'Season of Revival' },
+              description: 'First season',
+              startDate: new Date().toISOString(),
+              endDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+              totalTiers: 10,
+              rewards: Array.from({ length: 10 }, (_, i) => ({
+                tier: i + 1,
+                freeReward: { type: 'xp' as const, value: 50 * (i + 1) },
+                premiumReward: { type: 'xp' as const, value: 100 * (i + 1) },
+                claimedFree: false,
+                claimedPremium: false,
+              })),
+              hasPremium: false,
+              currentProgress: 500,
+              totalProgress: 1000,
+              premiumCost: 500,
+            }}
+            onClaimReward={() => {}}
+            onBuyPremium={() => {}}
+            onClose={() => setShowSeasonPass(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      <OpeningAnimation
+        isOpen={openingArtifact !== null}
+        object={openingArtifact ? { id: openingArtifact.key, name: openingArtifact.name, image: openingArtifact.image, rarity: 'epic' } : null}
+        lang={lang}
+        onComplete={() => setOpeningArtifact(null)}
+      />
+    </div>
+  );
+}
