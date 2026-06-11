@@ -52,7 +52,7 @@ export const TAP_LEVELS = [
   { level: 17, xpPerTap: 40, upgradeCostXP: 1000000 },
   { level: 18, xpPerTap: 50, upgradeCostXP: 1500000 },
   { level: 19, xpPerTap: 65, upgradeCostXP: 2500000 },
-  { level: 20, xpPerTap: 80, upgradeCostXP: 0       },
+  { level: 20, xpPerTap: 80, upgradeCostXP: 5000000 },
 ];
 export const MAX_TAP_LEVEL = 20;
 
@@ -80,7 +80,6 @@ export interface TapArtifact {
   image: string;
 }
 
-// All images use confirmed-working Unsplash photo IDs from the museum ARTIFACTS array
 export const TAP_ARTIFACTS: TapArtifact[] = [
   {
     key: "kyiv_coin",
@@ -89,7 +88,7 @@ export const TAP_ARTIFACTS: TapArtifact[] = [
     costXP: 0,
     costStars: 0,
     isStarter: true,
-    image: "https://images.unsplash.com/photo-1561542320-ec5c88087ab4?w=200&h=200&fit=crop",
+    image: "https://images.pexels.com/photos/730547/pexels-photo-730547.jpeg?auto=compress&cs=tinysrgb&w=400",
   },
   {
     key: "cossack_saber",
@@ -97,7 +96,7 @@ export const TAP_ARTIFACTS: TapArtifact[] = [
     xpBonus: 3,
     costXP: 800,
     costStars: 0,
-    image: "https://images.unsplash.com/photo-1766081816102-e8d70da3a2b1?w=200&h=200&fit=crop",
+    image: "https://images.pexels.com/photos/6045028/pexels-photo-6045028.jpeg?auto=compress&cs=tinysrgb&w=400",
   },
   {
     key: "vyshyvanka_amulet",
@@ -105,7 +104,7 @@ export const TAP_ARTIFACTS: TapArtifact[] = [
     xpBonus: 5,
     costXP: 0,
     costStars: 25,
-    image: "https://images.unsplash.com/photo-1655678204995-0e1eb3d2fdbc?w=200&h=200&fit=crop",
+    image: "https://images.pexels.com/photos/3621188/pexels-photo-3621188.jpeg?auto=compress&cs=tinysrgb&w=400",
   },
   {
     key: "pysanka_power",
@@ -113,7 +112,7 @@ export const TAP_ARTIFACTS: TapArtifact[] = [
     xpBonus: 10,
     costXP: 0,
     costStars: 50,
-    image: "https://images.unsplash.com/photo-1617191574040-c57e8af59ddb?w=200&h=200&fit=crop",
+    image: "https://images.pexels.com/photos/3817526/pexels-photo-3817526.jpeg?auto=compress&cs=tinysrgb&w=400",
   },
   {
     key: "golden_crown",
@@ -121,7 +120,7 @@ export const TAP_ARTIFACTS: TapArtifact[] = [
     xpBonus: 20,
     costXP: 0,
     costStars: 100,
-    image: "https://images.unsplash.com/photo-1770112095032-693a32cace1d?w=200&h=200&fit=crop",
+    image: "https://images.pexels.com/photos/3109671/pexels-photo-3109671.jpeg?auto=compress&cs=tinysrgb&w=400",
   },
   {
     key: "hetman_mace",
@@ -129,7 +128,7 @@ export const TAP_ARTIFACTS: TapArtifact[] = [
     xpBonus: 50,
     costXP: 0,
     costStars: 250,
-    image: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=200&h=200&fit=crop",
+    image: "https://images.pexels.com/photos/3889742/pexels-photo-3889742.jpeg?auto=compress&cs=tinysrgb&w=400",
   },
   {
     key: "trident_independence",
@@ -137,7 +136,7 @@ export const TAP_ARTIFACTS: TapArtifact[] = [
     xpBonus: 100,
     costXP: 0,
     costStars: 500,
-    image: "https://images.unsplash.com/photo-1605991362090-47188b84d40a?w=200&h=200&fit=crop",
+    image: "https://images.pexels.com/photos/1543793/pexels-photo-1543793.jpeg?auto=compress&cs=tinysrgb&w=400",
   },
   {
     key: "orlyk_constitution",
@@ -145,7 +144,7 @@ export const TAP_ARTIFACTS: TapArtifact[] = [
     xpBonus: 150,
     costXP: 0,
     costStars: 750,
-    image: "https://images.unsplash.com/photo-1705769945723-10ecbe1f7df8?w=200&h=200&fit=crop",
+    image: "https://images.pexels.com/photos/1370295/pexels-photo-1370295.jpeg?auto=compress&cs=tinysrgb&w=400",
   },
   {
     key: "peresopnytsia",
@@ -153,7 +152,7 @@ export const TAP_ARTIFACTS: TapArtifact[] = [
     xpBonus: 250,
     costXP: 0,
     costStars: 1000,
-    image: "https://images.unsplash.com/photo-1561542320-ec5c88087ab4?w=200&h=200&fit=crop",
+    image: "https://images.pexels.com/photos/1906658/pexels-photo-1906658.jpeg?auto=compress&cs=tinysrgb&w=400",
   },
   {
     key: "hetman_treasure",
@@ -161,7 +160,7 @@ export const TAP_ARTIFACTS: TapArtifact[] = [
     xpBonus: 500,
     costXP: 0,
     costStars: 1500,
-    image: "https://images.unsplash.com/photo-1770112095032-693a32cace1d?w=200&h=200&fit=crop",
+    image: "https://images.pexels.com/photos/1545587/pexels-photo-1545587.jpeg?auto=compress&cs=tinysrgb&w=400",
   },
   {
     key: "indestructible_symbol",
@@ -169,7 +168,7 @@ export const TAP_ARTIFACTS: TapArtifact[] = [
     xpBonus: 1000,
     costXP: 0,
     costStars: 2500,
-    image: "https://images.unsplash.com/photo-1605991362090-47188b84d40a?w=200&h=200&fit=crop",
+    image: "https://images.pexels.com/photos/1209843/pexels-photo-1209843.jpeg?auto=compress&cs=tinysrgb&w=400",
   },
 ];
 
