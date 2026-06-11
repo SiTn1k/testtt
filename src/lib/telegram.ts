@@ -151,8 +151,46 @@ export function showTelegramConfirm(message: string, callback: (confirmed: boole
   }
 }
 
-export function triggerHapticFeedback(type: 'light' | 'medium' | 'heavy'): void {
+export function triggerHapticFeedback(type: 'light' | 'medium' | 'heavy' | 'rigid' | 'soft'): void {
   if (window.Telegram?.WebApp?.HapticFeedback) {
     window.Telegram.WebApp.HapticFeedback.impactOccurred(type);
+  }
+}
+
+export function triggerHapticNotification(type: 'error' | 'success' | 'warning'): void {
+  if (window.Telegram?.WebApp?.HapticFeedback) {
+    window.Telegram.WebApp.HapticFeedback.notificationOccurred(type);
+  }
+}
+
+export function triggerHapticSelection(): void {
+  if (window.Telegram?.WebApp?.HapticFeedback) {
+    window.Telegram.WebApp.HapticFeedback.selectionChanged();
+  }
+}
+
+export function showMainButton(text: string, callback: () => void): void {
+  const btn = window.Telegram?.WebApp?.MainButton;
+  if (btn) {
+    btn.setText(text);
+    btn.onClick(callback);
+    btn.show();
+  }
+}
+
+export function hideMainButton(): void {
+  window.Telegram?.WebApp?.MainButton?.hide();
+}
+
+export function setMainButtonLoading(loading: boolean): void {
+  const btn = window.Telegram?.WebApp?.MainButton;
+  if (btn) {
+    if (loading) {
+      btn.showLoader();
+      btn.disable();
+    } else {
+      btn.hideLoader();
+      btn.enable();
+    }
   }
 }
