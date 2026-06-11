@@ -432,3 +432,5 @@ export const TIMELINE_EVENT_DETAILS: TimelineEventDetail[] = [
 <p>In the first months of the war, up to <strong>80%</strong> of soldiers' material needs were covered by the people from their own pockets.</p>`,
   },
 ];
+
+
