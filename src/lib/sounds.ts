@@ -152,6 +152,3 @@ export const initSounds = () => {
 };
 
 export default soundManager;
-
-
-
