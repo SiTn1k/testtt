@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { initTelegram, getTelegramUser, getStartParam } from "./lib/telegram";
+import { initTelegram, getTelegramUser, getStartParam, triggerHapticFeedback, triggerHapticNotification } from "./lib/telegram";
 import { museumAPI, TAP_LEVELS, MAX_TAP_LEVEL, AUTOCLICKER_OPTIONS, TAP_ARTIFACTS } from "./lib/api";
 import type { UserStats, TapGameState, TapArtifact, AutoclikerOption } from "./lib/api";
 import { TIMELINE_EVENT_DETAILS } from "./lib/timeline-data";
@@ -33,9 +33,26 @@ import {
   ShoppingBag,
   BookOpen,
   Send,
+  Dices,
+  Gift,
+  Trophy,
+  Users,
+  Clock,
+  Award,
 } from "lucide-react";
 import { MuseumScreen as NewMuseumScreen } from "./screens/MuseumScreen";
 import { ProfileScreen as NewProfileScreen } from "./screens/ProfileScreen";
+import { ParticleSystem, createTapParticles, createConfettiExplosion } from "./components/Particles";
+import { LuckySpin } from "./components/LuckySpin";
+import { DailyRewards } from "./components/DailyRewards";
+import { AchievementsModal, ACHIEVEMENTS_LIST } from "./components/Achievements";
+import { Leaderboard } from "./components/Leaderboard";
+import { Guilds } from "./components/Guilds";
+import { LimitedArtifactsModal } from "./components/LimitedArtifacts";
+import { SeasonPass } from "./components/SeasonPass";
+import { OpeningAnimation } from "./components/Animations";
+import { soundManager, initSounds } from "./lib/sounds";
+import type { Particle } from "./components/Particles";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -83,7 +100,7 @@ const ARTIFACTS: Artifact[] = [
       ua: "Архітектурний шедевр Київської Русі, збудований за часів Ярослава Мудрого. Собор є одним із найважливіших символів української культури та історії.",
       en: "Architectural masterpiece of Kyivan Rus, built during the reign of Yaroslav the Wise. The cathedral is one of the most important symbols of Ukrainian culture and history.",
     },
-    image: "https://images.unsplash.com/photo-1770112095032-693a32cace1d?w=800&h=600&fit=crop",
+    image: "/images/sofia-cathedral.jpg",
     category: "Архітектура",
   },
   {
@@ -95,7 +112,7 @@ const ARTIFACTS: Artifact[] = [
       ua: "Національний символ України - вишита сорочка з унікальними орнаментами. Кожен регіон має власні візерунки та символіку.",
       en: "National symbol of Ukraine - embroidered shirt with unique ornaments. Each region has its own patterns and symbolism.",
     },
-    image: "https://images.unsplash.com/photo-1655678204995-0e1eb3d2fdbc?w=800&h=600&fit=crop",
+    image: "/images/vyshyvanka.jpg",
     category: "Культура",
   },
   {
@@ -107,7 +124,7 @@ const ARTIFACTS: Artifact[] = [
       ua: "Давнє українське мистецтво розпису великодніх яєць символічними орнаментами. Кожен символ несе глибоке духовне значення.",
       en: "Ancient Ukrainian art of painting Easter eggs with symbolic ornaments. Each symbol carries deep spiritual meaning.",
     },
-    image: "https://images.unsplash.com/photo-1617191574040-c57e8af59ddb?w=800&h=600&fit=crop",
+    image: "/images/pysanka.jpg",
     category: "Мистецтво",
   },
   {
@@ -119,7 +136,7 @@ const ARTIFACTS: Artifact[] = [
       ua: "Фортеця козацької демократії та символ української свободи. Тут народжувалася перша демократична республіка в Європі.",
       en: "Fortress of Cossack democracy and symbol of Ukrainian freedom. The first democratic republic in Europe was born here.",
     },
-    image: "https://images.unsplash.com/photo-1766081816102-e8d70da3a2b1?w=800&h=600&fit=crop",
+    image: "/images/zaporizhian-sich.jpg",
     category: "Історія",
   },
   {
@@ -131,7 +148,7 @@ const ARTIFACTS: Artifact[] = [
       ua: "Національний український музичний інструмент з 60+ струнами. Кобзарі співали епічні думи про героїв та історію народу.",
       en: "National Ukrainian musical instrument with 60+ strings. Kobzars sang epic ballads about heroes and the history of the people.",
     },
-    image: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&h=600&fit=crop",
+    image: "/images/bandura.jpg",
     category: "Музика",
   },
   {
@@ -143,7 +160,7 @@ const ARTIFACTS: Artifact[] = [
       ua: "Столиця України - місто з тисячолітньою історією та сучасною культурою. Центр технологій, мистецтва та інновацій.",
       en: "Capital of Ukraine - city with thousand-year history and modern culture. Center of technology, art and innovation.",
     },
-    image: "https://images.unsplash.com/photo-1605991362090-47188b84d40a?w=800&h=600&fit=crop",
+    image: "/images/kyiv.jpg",
     category: "Місто",
   },
   {
@@ -155,7 +172,7 @@ const ARTIFACTS: Artifact[] = [
       ua: "Монастир у печерах, заснований у 1051 р. Одне з найсвятіших місць Східного Православ'я з унікальними підземними лабіринтами.",
       en: "Cave monastery founded in 1051. One of the holiest sites of Eastern Orthodoxy with unique underground labyrinths.",
     },
-    image: "https://images.unsplash.com/photo-1561542320-ec5c88087ab4?w=800&h=600&fit=crop",
+    image: "/images/lavra.jpg",
     category: "Архітектура",
   },
   {
@@ -167,7 +184,7 @@ const ARTIFACTS: Artifact[] = [
       ua: "Традиція квіткового народного розпису, внесена ЮНЕСКО до списку нематеріальної спадщини. Яскраві квіти та птахи символізують життя.",
       en: "Floral folk painting tradition inscribed on UNESCO's intangible heritage list. Vivid flowers and birds symbolize life.",
     },
-    image: "https://images.unsplash.com/photo-1705769945723-10ecbe1f7df8?w=800&h=600&fit=crop",
+    image: "/images/petrykivka.jpg",
     category: "Мистецтво",
   },
 ];
@@ -246,10 +263,10 @@ function HomeScreen({ lang, setSelectedArtifact, setScreen }: { lang: Lang; setS
   const t = TEXT[lang].home;
 
   const historicalEras = [
-    { id: "kyivan-rus", title: { ua: "Київська Русь", en: "Kyivan Rus" }, period: "882-1240", icon: Crown, image: "https://images.unsplash.com/photo-1770112095032-693a32cace1d?w=600&h=400&fit=crop" },
-    { id: "cossack", title: { ua: "Козацька Доба", en: "Cossack Era" }, period: "1648-1775", icon: Sword, image: "https://images.unsplash.com/photo-1766081816102-e8d70da3a2b1?w=600&h=400&fit=crop" },
-    { id: "modern", title: { ua: "Сучасна Україна", en: "Modern Ukraine" }, period: "1991-Present", icon: Building2, image: "https://images.unsplash.com/photo-1605991362090-47188b84d40a?w=600&h=400&fit=crop" },
-    { id: "future", title: { ua: "Майбутнє", en: "Future Vision" }, period: "2050+", icon: Sparkles, image: "https://images.unsplash.com/photo-1762341154386-fa765c9f2aa5?w=600&h=400&fit=crop" },
+    { id: "kyivan-rus", title: { ua: "Київська Русь", en: "Kyivan Rus" }, period: "882-1240", icon: Crown, image: "/images/era-kyivan-rus.jpg" },
+    { id: "cossack", title: { ua: "Козацька Доба", en: "Cossack Era" }, period: "1648-1775", icon: Sword, image: "/images/era-cossack.jpg" },
+    { id: "modern", title: { ua: "Сучасна Україна", en: "Modern Ukraine" }, period: "1991-Present", icon: Building2, image: "/images/era-modern.jpg" },
+    { id: "future", title: { ua: "Майбутнє", en: "Future Vision" }, period: "2050+", icon: Sparkles, image: "/images/era-future.jpg" },
   ];
 
   const featuredCollections = [
@@ -263,7 +280,7 @@ function HomeScreen({ lang, setSelectedArtifact, setScreen }: { lang: Lang; setS
     <div className="space-y-10 pb-32">
       {/* Cinematic Hero */}
       <div className="relative h-[520px] -mx-4 -mt-4 overflow-hidden">
-        <motion.img initial={{ scale: 1.2 }} animate={{ scale: 1 }} transition={{ duration: 2, ease: [0.22, 1, 0.36, 1] }} src="https://images.unsplash.com/photo-1770112095032-693a32cace1d?w=1200&h=800&fit=crop" alt="Museum hero" className="w-full h-full object-cover" />
+        <motion.img initial={{ scale: 1.2 }} animate={{ scale: 1 }} transition={{ duration: 2, ease: [0.22, 1, 0.36, 1] }} src="/images/hero.jpg" alt="Museum hero" className="w-full h-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0f] via-[#0a0a0f]/60 to-transparent" />
         <div className="absolute inset-0 bg-gradient-to-b from-[#0a0a0f]/40 to-transparent" />
 
@@ -1101,7 +1118,7 @@ function TapScreen({ lang, dbUser, stats, onRefresh }: { lang: Lang; dbUser: DbU
   };
 
   // Get active artifact image for tap area
-  const tapImage = activeArtifact?.image || "https://images.unsplash.com/photo-1770112095032-693a32cace1d?w=600&h=600&fit=crop";
+  const tapImage = activeArtifact?.image || "/images/hero.jpg";
 
   return (
     <div className="space-y-6 pb-32">
@@ -1324,7 +1341,7 @@ function TapScreen({ lang, dbUser, stats, onRefresh }: { lang: Lang; dbUser: DbU
                           src={artifact.image}
                           alt={artifact.name[lang as "ua" | "en"]}
                           className="w-full h-full object-cover"
-                          onError={(e) => { (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1561542320-ec5c88087ab4?w=200&h=200&fit=crop"; }}
+                          onError={(e) => { (e.target as HTMLImageElement).src = "/images/lavra.jpg"; }}
                         />
                         {owned && (
                           <div className="absolute inset-0 bg-[#ffd700]/20 flex items-center justify-center">
@@ -1399,6 +1416,23 @@ export default function App() {
   const sessionStartIsoRef = useRef<string | null>(null);
   // Ref always holds the latest dbUser to avoid stale closure in cleanup/intervals
   const dbUserRef = useRef<DbUser | null>(null);
+
+  // New gamification states
+  const [particles, setParticles] = useState<Particle[]>([]);
+  const [showLuckySpin, setShowLuckySpin] = useState(false);
+  const [showDailyRewards, setShowDailyRewards] = useState(false);
+  const [showAchievements, setShowAchievements] = useState(false);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [showGuilds, setShowGuilds] = useState(false);
+  const [showLimitedArtifacts, setShowLimitedArtifacts] = useState(false);
+  const [showSeasonPass, setShowSeasonPass] = useState(false);
+  const [openingArtifact, setOpeningArtifact] = useState<TapArtifact | null>(null);
+  const [freeSpins, setFreeSpins] = useState(1);
+
+  // Initialize sounds on first interaction
+  useEffect(() => {
+    initSounds();
+  }, []);
 
   useEffect(() => {
     dbUserRef.current = dbUser;
@@ -1545,6 +1579,42 @@ export default function App() {
           </AnimatePresence>
         </div>
 
+        {/* Gamification Quick Access Buttons */}
+        <div className="fixed right-4 bottom-28 z-40 flex flex-col gap-2">
+          <motion.button
+            onClick={() => { triggerHapticFeedback('light'); setShowLuckySpin(true); }}
+            className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-lg"
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+          >
+            <Dices className="w-6 h-6 text-white" />
+          </motion.button>
+          <motion.button
+            onClick={() => { triggerHapticFeedback('light'); setShowDailyRewards(true); }}
+            className="w-12 h-12 rounded-full bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center shadow-lg"
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+          >
+            <Gift className="w-6 h-6 text-white" />
+          </motion.button>
+          <motion.button
+            onClick={() => { triggerHapticFeedback('light'); setShowAchievements(true); }}
+            className="w-12 h-12 rounded-full bg-gradient-to-br from-yellow-500 to-orange-500 flex items-center justify-center shadow-lg"
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+          >
+            <Trophy className="w-6 h-6 text-white" />
+          </motion.button>
+          <motion.button
+            onClick={() => { triggerHapticFeedback('light'); setShowLeaderboard(true); }}
+            className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shadow-lg"
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+          >
+            <TrendingUp className="w-6 h-6 text-white" />
+          </motion.button>
+        </div>
+
         {/* Bottom Navigation */}
         <div className="fixed bottom-0 left-0 right-0 z-50 px-6 pb-8">
           <div className="max-w-md mx-auto relative">
@@ -1632,6 +1702,145 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Gamification Modals */}
+      <ParticleSystem particles={particles} onComplete={() => setParticles([])} />
+
+      <AnimatePresence>
+        {showLuckySpin && (
+          <LuckySpin
+            lang={lang}
+            canSpin={freeSpins > 0}
+            costXP={100}
+            onSpin={(reward) => {
+              triggerHapticNotification('success');
+              setFreeSpins(prev => Math.max(0, prev - 1));
+              if (reward.type === 'xp') {
+                if (dbUser) {
+                  museumAPI.addXP(dbUser.id, reward.value).then(refreshStats);
+                }
+              }
+            }}
+            onPurchaseSpin={() => {
+              if (dbUser && (dbUser.total_xp || 0) >= 100) {
+                museumAPI.addXP(dbUser.id, -100).then(() => {
+                  setFreeSpins(prev => prev + 1);
+                  refreshStats();
+                });
+              }
+            }}
+            onClose={() => setShowLuckySpin(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showDailyRewards && dbUser && (
+          <DailyRewards
+            lang={lang}
+            consecutiveDays={10}
+            lastClaimDate={null}
+            onClaim={(reward) => {
+              museumAPI.addXP(dbUser.id, reward.xp).then(refreshStats);
+            }}
+            onClose={() => setShowDailyRewards(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showAchievements && (
+          <AchievementsModal
+            lang={lang}
+            unlockedKeys={[]}
+            stats={{ totalTaps: stats?.totalTaps || 0, totalXP: dbUser?.total_xp || 0, artifactsCount: 0, referralsCount: 0, streak: 0 }}
+            onClose={() => setShowAchievements(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showLeaderboard && (
+          <Leaderboard
+            lang={lang}
+            myRank={1}
+            entries={[
+              { rank: 1, userId: '1', telegramId: 1, firstName: 'User 1', totalXP: 10000, totalTaps: 5000, streak: 7 },
+              { rank: 2, userId: '2', telegramId: 2, firstName: 'User 2', totalXP: 8000, totalTaps: 4000, streak: 5 },
+              { rank: 3, userId: '3', telegramId: 3, firstName: 'User 3', totalXP: 6000, totalTaps: 3000, streak: 3 },
+            ]}
+            onClose={() => setShowLeaderboard(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showGuilds && (
+          <Guilds
+            lang={lang}
+            currentGuild={undefined}
+            guilds={[
+              { id: '1', name: 'Козацька Вольниця', description: 'Гільдія вільних людей', icon: '⚔️', color: '#3b82f6', leaderId: '1', totalMembers: 25, maxMembers: 50, totalXP: 50000, weeklyXP: 5000, rank: 1, trophies: 10, joinType: 'open' },
+            ]}
+            onJoinGuild={() => {}}
+            onCreateGuild={() => {}}
+            onLeaveGuild={() => {}}
+            onClose={() => setShowGuilds(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showLimitedArtifacts && dbUser && (
+          <LimitedArtifactsModal
+            lang={lang}
+            artifacts={[
+              { id: '1', name: { ua: 'Тризуб Слави', en: 'Trident of Glory' }, description: { ua: 'Легендарний артефакт', en: 'Legendary artifact' }, image: '/images/tap-trident-independence.jpg', xpBonus: 1000, rarity: 'legendary', availableUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), totalSupply: 100, claimedCount: 50, costStars: 500 },
+            ]}
+            userXP={dbUser.total_xp || 0}
+            userStars={0}
+            onClaim={() => {}}
+            onClose={() => setShowLimitedArtifacts(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showSeasonPass && (
+          <SeasonPass
+            lang={lang}
+            season={{
+              id: '1',
+              name: { ua: 'Сезон Відродження', en: 'Season of Revival' },
+              description: 'First season',
+              startDate: new Date().toISOString(),
+              endDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+              totalTiers: 10,
+              rewards: Array.from({ length: 10 }, (_, i) => ({
+                tier: i + 1,
+                freeReward: { type: 'xp' as const, value: 50 * (i + 1) },
+                premiumReward: { type: 'xp' as const, value: 100 * (i + 1) },
+                claimedFree: false,
+                claimedPremium: false,
+              })),
+              hasPremium: false,
+              currentProgress: 500,
+              totalProgress: 1000,
+              premiumCost: 500,
+            }}
+            onClaimReward={() => {}}
+            onBuyPremium={() => {}}
+            onClose={() => setShowSeasonPass(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      <OpeningAnimation
+        isOpen={openingArtifact !== null}
+        object={openingArtifact ? { id: openingArtifact.key, name: openingArtifact.name, image: openingArtifact.image, rarity: 'epic' } : null}
+        lang={lang}
+        onComplete={() => setOpeningArtifact(null)}
+      />
     </div>
   );
 }
