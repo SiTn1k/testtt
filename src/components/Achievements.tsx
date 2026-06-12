@@ -267,3 +267,4 @@ export const AchievementsModal: React.FC<AchievementsModalProps> = ({
 };
 
 export default AchievementsModal;
+
