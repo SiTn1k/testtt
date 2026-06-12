@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Trophy, Star, Zap, Target, Gift, Users, Crown, Flame, Sparkles, Award, Lock, Check } from 'lucide-react';
+import { Trophy, Star, Zap, Target, Gift, Users, Crown, Flame, Sparkles, Award, Lock, Check, Clock, Landmark, BookOpen, Heart, Coins, Swords, Shield, Scroll } from 'lucide-react';
 import { createConfettiExplosion, ParticleSystem, Particle } from './Particles';
 import { triggerHapticFeedback, triggerHapticNotification } from '../lib/telegram';
+import { UNIFIED_ACHIEVEMENTS } from '../lib/api';
+import type { LucideIcon } from 'lucide-react';
 
 export interface Achievement {
   id: string;
@@ -13,165 +15,60 @@ export interface Achievement {
   color: string;
   rarity: 'common' | 'rare' | 'epic' | 'legendary';
   xpReward: number;
-  condition: { type: 'taps' | 'xp' | 'artifacts' | 'days' | 'referrals' | 'donated' | 'streak'; value: number };
+  condition?: { type: string; value: number };
 }
 
-export const ACHIEVEMENTS_LIST: Achievement[] = [
-  {
-    id: 'FIRST_TAP',
-    key: 'FIRST_TAP',
-    title: { ua: 'Перший Крок', en: 'First Step' },
-    description: { ua: 'Зробіть свій перший тап', en: 'Make your first tap' },
-    icon: <Zap className="w-8 h-8" />,
-    color: '#4ade80',
-    rarity: 'common',
-    xpReward: 10,
-    condition: { type: 'taps', value: 1 },
-  },
-  {
-    id: 'TAP_100',
-    key: 'TAP_100',
-    title: { ua: 'Початківець', en: 'Beginner' },
-    description: { ua: 'Зробіть 100 тапів', en: 'Make 100 taps' },
-    icon: <Target className="w-8 h-8" />,
-    color: '#4ade80',
-    rarity: 'common',
-    xpReward: 50,
-    condition: { type: 'taps', value: 100 },
-  },
-  {
-    id: 'TAP_1000',
-    key: 'TAP_1000',
-    title: { ua: 'Енергетик', en: 'Energetic' },
-    description: { ua: 'Зробіть 1,000 тапів', en: 'Make 1,000 taps' },
-    icon: <Zap className="w-8 h-8" />,
-    color: '#22d3ee',
-    rarity: 'rare',
-    xpReward: 200,
-    condition: { type: 'taps', value: 1000 },
-  },
-  {
-    id: 'TAP_10000',
-    key: 'TAP_10000',
-    title: { ua: 'Тап-Майстер', en: 'Tap Master' },
-    description: { ua: 'Зробіть 10,000 тапів', en: 'Make 10,000 taps' },
-    icon: <Star className="w-8 h-8" />,
-    color: '#a78bfa',
-    rarity: 'epic',
-    xpReward: 500,
-    condition: { type: 'taps', value: 10000 },
-  },
-  {
-    id: 'XP_1000',
-    key: 'XP_1000',
-    title: { ua: 'Колекціонер', en: 'Collector' },
-    description: { ua: 'Зберіть 1,000 XP', en: 'Collect 1,000 XP' },
-    icon: <Sparkles className="w-8 h-8" />,
-    color: '#22d3ee',
-    rarity: 'rare',
-    xpReward: 100,
-    condition: { type: 'xp', value: 1000 },
-  },
-  {
-    id: 'XP_10000',
-    key: 'XP_10000',
-    title: { ua: 'Мільйонер XP', en: 'XP Millionaire' },
-    description: { ua: 'Зберіть 10,000 XP', en: 'Collect 10,000 XP' },
-    icon: <Crown className="w-8 h-8" />,
-    color: '#fbbf24',
-    rarity: 'legendary',
-    xpReward: 1000,
-    condition: { type: 'xp', value: 10000 },
-  },
-  {
-    id: 'ARTIFACTS_5',
-    key: 'ARTIFACTS_5',
-    title: { ua: 'Збирач', en: 'Gatherer' },
-    description: { ua: 'Купіть 5 артефактів', en: 'Buy 5 artifacts' },
-    icon: <Gift className="w-8 h-8" />,
-    color: '#4ade80',
-    rarity: 'common',
-    xpReward: 100,
-    condition: { type: 'artifacts', value: 5 },
-  },
-  {
-    id: 'ARTIFACTS_ALL',
-    key: 'ARTIFACTS_ALL',
-    title: { ua: 'Повна Колекція', en: 'Full Collection' },
-    description: { ua: 'Купіть всі артефакти', en: 'Buy all artifacts' },
-    icon: <Trophy className="w-8 h-8" />,
-    color: '#fbbf24',
-    rarity: 'legendary',
-    xpReward: 2000,
-    condition: { type: 'artifacts', value: 11 },
-  },
-  {
-    id: 'FIRST_REFERRAL',
-    key: 'FIRST_REFERRAL',
-    title: { ua: 'Перший Друг', en: 'First Friend' },
-    description: { ua: 'Запросіть 1 друга', en: 'Invite 1 friend' },
-    icon: <Users className="w-8 h-8" />,
-    color: '#22d3ee',
-    rarity: 'rare',
-    xpReward: 200,
-    condition: { type: 'referrals', value: 1 },
-  },
-  {
-    id: 'REFERRALS_10',
-    key: 'REFERRALS_10',
-    title: { ua: 'Інфлюенсер', en: 'Influencer' },
-    description: { ua: 'Запросіть 10 друзів', en: 'Invite 10 friends' },
-    icon: <Users className="w-8 h-8" />,
-    color: '#a78bfa',
-    rarity: 'epic',
-    xpReward: 500,
-    condition: { type: 'referrals', value: 10 },
-  },
-  {
-    id: 'FIRST_DONATION',
-    key: 'FIRST_DONATION',
-    title: { ua: 'Перший Внесок', en: 'First Contribution' },
-    description: { ua: 'Зробіть першу пожертву', en: 'Make your first donation' },
-    icon: <Star className="w-8 h-8" />,
-    color: '#4ade80',
-    rarity: 'common',
-    xpReward: 50,
-    condition: { type: 'donated', value: 1 },
-  },
-  {
-    id: 'DONATED_100',
-    key: 'DONATED_100',
-    title: { ua: 'Щедрий', en: 'Generous' },
-    description: { ua: 'Пожертвуйте 100 Stars', en: 'Donate 100 Stars' },
-    icon: <Star className="w-8 h-8" />,
-    color: '#22d3ee',
-    rarity: 'rare',
-    xpReward: 200,
-    condition: { type: 'donated', value: 100 },
-  },
-  {
-    id: 'STREAK_7',
-    key: 'STREAK_7',
-    title: { ua: 'Тиждень Стример', en: 'Week Streaker' },
-    description: { ua: 'Дні поспіль 7', en: '7 days streak' },
-    icon: <Flame className="w-8 h-8" />,
-    color: '#fb923c',
-    rarity: 'rare',
-    xpReward: 300,
-    condition: { type: 'streak', value: 7 },
-  },
-  {
-    id: 'STREAK_30',
-    key: 'STREAK_30',
-    title: { ua: 'Місяць Відданості', en: 'Month of Loyalty' },
-    description: { ua: '30 днів поспіль', en: '30 days streak' },
-    icon: <Flame className="w-8 h-8" />,
-    color: '#fbbf24',
-    rarity: 'legendary',
-    xpReward: 1000,
-    condition: { type: 'streak', value: 30 },
-  },
-];
+const ICON_MAP: Record<string, LucideIcon> = {
+  FIRST_VISIT: Award,
+  FIRST_ARTIFACT_VIEW: Landmark,
+  ONE_HOUR: Clock,
+  TEN_ARTIFACTS: Landmark,
+  ALL_ARTIFACTS: Crown,
+  FIRST_ARTICLE: BookOpen,
+  FIRST_TAP: Zap,
+  TAP_100: Target,
+  TAP_1000: Zap,
+  TAP_10000: Star,
+  XP_1000: Sparkles,
+  XP_10000: Crown,
+  ARTIFACTS_5: Gift,
+  ARTIFACTS_ALL: Trophy,
+  FIRST_REFERRAL: Users,
+  REFERRALS_10: Users,
+  FIRST_DONATION: Heart,
+  DONATED_100: Coins,
+  DONATED_1000: Crown,
+  STREAK_7: Flame,
+  STREAK_30: Flame,
+  COLLECTION_KYIVAN_RUS: Crown,
+  COLLECTION_COSSACK_ERA: Swords,
+  COLLECTION_UNR: Scroll,
+  COLLECTION_MODERN_UKRAINE: Shield,
+};
+
+const RARITY_COLOR: Record<string, string> = {
+  common: '#4ade80',
+  rare: '#22d3ee',
+  epic: '#a78bfa',
+  legendary: '#fbbf24',
+};
+
+const createIcon = (key: string): React.ReactNode => {
+  const IconComp = ICON_MAP[key] || Star;
+  return React.createElement(IconComp, { className: "w-8 h-8" });
+};
+
+export const ACHIEVEMENTS_LIST: Achievement[] = UNIFIED_ACHIEVEMENTS.map(a => ({
+  id: a.key,
+  key: a.key,
+  title: { ua: a.ua, en: a.en },
+  description: { ua: a.ua, en: a.en },
+  icon: createIcon(a.key),
+  color: RARITY_COLOR[a.rarity] || '#4ade80',
+  rarity: a.rarity,
+  xpReward: a.xpReward,
+  condition: a.condition,
+}));
 
 const RARITY_COLORS: Record<string, string> = {
   common: 'from-gray-400 to-gray-500',
