@@ -52,7 +52,7 @@ export const TAP_LEVELS = [
   { level: 17, xpPerTap: 40, upgradeCostXP: 1000000 },
   { level: 18, xpPerTap: 50, upgradeCostXP: 1500000 },
   { level: 19, xpPerTap: 65, upgradeCostXP: 2500000 },
-  { level: 20, xpPerTap: 80, upgradeCostXP: 5000000 },
+  { level: 20, xpPerTap: 80, upgradeCostXP: 0       },
 ];
 export const MAX_TAP_LEVEL = 20;
 
@@ -78,6 +78,12 @@ export interface TapArtifact {
   costStars: number;
   isStarter?: boolean;
   image: string;
+  effects?: {
+    autoclickerSpeed?: number; // multiplier (e.g. 1.5 = 50% faster autoclicker)
+    doubleRewardChance?: number; // 0.05 = 5% chance to double XP on tap
+    streakBonus?: number; // extra XP per day of streak
+    energyRecovery?: number; // % faster energy recovery (future use)
+  };
 }
 
 export const TAP_ARTIFACTS: TapArtifact[] = [
@@ -88,7 +94,7 @@ export const TAP_ARTIFACTS: TapArtifact[] = [
     costXP: 0,
     costStars: 0,
     isStarter: true,
-    image: "/images/tap-kyiv-coin.jpg",
+    image: "https://images.pexels.com/photos/730547/pexels-photo-730547.jpeg?auto=compress&cs=tinysrgb&w=400",
   },
   {
     key: "cossack_saber",
@@ -96,7 +102,7 @@ export const TAP_ARTIFACTS: TapArtifact[] = [
     xpBonus: 3,
     costXP: 800,
     costStars: 0,
-    image: "/images/tap-cossack-saber.jpg",
+    image: "https://images.pexels.com/photos/6045028/pexels-photo-6045028.jpeg?auto=compress&cs=tinysrgb&w=400",
   },
   {
     key: "vyshyvanka_amulet",
@@ -104,7 +110,8 @@ export const TAP_ARTIFACTS: TapArtifact[] = [
     xpBonus: 5,
     costXP: 0,
     costStars: 25,
-    image: "/images/tap-vyshyvanka-amulet.jpg",
+    image: "https://images.pexels.com/photos/3621188/pexels-photo-3621188.jpeg?auto=compress&cs=tinysrgb&w=400",
+    effects: { streakBonus: 2 },
   },
   {
     key: "pysanka_power",
@@ -112,7 +119,8 @@ export const TAP_ARTIFACTS: TapArtifact[] = [
     xpBonus: 10,
     costXP: 0,
     costStars: 50,
-    image: "/images/tap-pysanka-power.jpg",
+    image: "https://images.pexels.com/photos/3817526/pexels-photo-3817526.jpeg?auto=compress&cs=tinysrgb&w=400",
+    effects: { doubleRewardChance: 0.03 },
   },
   {
     key: "golden_crown",
@@ -120,7 +128,7 @@ export const TAP_ARTIFACTS: TapArtifact[] = [
     xpBonus: 20,
     costXP: 0,
     costStars: 100,
-    image: "/images/tap-golden-crown.jpg",
+    image: "https://images.pexels.com/photos/3109671/pexels-photo-3109671.jpeg?auto=compress&cs=tinysrgb&w=400",
   },
   {
     key: "hetman_mace",
@@ -128,7 +136,8 @@ export const TAP_ARTIFACTS: TapArtifact[] = [
     xpBonus: 50,
     costXP: 0,
     costStars: 250,
-    image: "/images/tap-hetman-mace.jpg",
+    image: "https://images.pexels.com/photos/3889742/pexels-photo-3889742.jpeg?auto=compress&cs=tinysrgb&w=400",
+    effects: { autoclickerSpeed: 1.25 },
   },
   {
     key: "trident_independence",
@@ -136,7 +145,8 @@ export const TAP_ARTIFACTS: TapArtifact[] = [
     xpBonus: 100,
     costXP: 0,
     costStars: 500,
-    image: "/images/tap-trident-independence.jpg",
+    image: "https://images.pexels.com/photos/1543793/pexels-photo-1543793.jpeg?auto=compress&cs=tinysrgb&w=400",
+    effects: { doubleRewardChance: 0.05 },
   },
   {
     key: "orlyk_constitution",
@@ -144,7 +154,8 @@ export const TAP_ARTIFACTS: TapArtifact[] = [
     xpBonus: 150,
     costXP: 0,
     costStars: 750,
-    image: "/images/tap-orlyk-constitution.jpg",
+    image: "https://images.pexels.com/photos/1370295/pexels-photo-1370295.jpeg?auto=compress&cs=tinysrgb&w=400",
+    effects: { streakBonus: 5 },
   },
   {
     key: "peresopnytsia",
@@ -152,7 +163,8 @@ export const TAP_ARTIFACTS: TapArtifact[] = [
     xpBonus: 250,
     costXP: 0,
     costStars: 1000,
-    image: "/images/tap-peresopnytsia.jpg",
+    image: "https://images.pexels.com/photos/1906658/pexels-photo-1906658.jpeg?auto=compress&cs=tinysrgb&w=400",
+    effects: { autoclickerSpeed: 1.5 },
   },
   {
     key: "hetman_treasure",
@@ -160,7 +172,8 @@ export const TAP_ARTIFACTS: TapArtifact[] = [
     xpBonus: 500,
     costXP: 0,
     costStars: 1500,
-    image: "/images/tap-hetman-treasure.jpg",
+    image: "https://images.pexels.com/photos/1545587/pexels-photo-1545587.jpeg?auto=compress&cs=tinysrgb&w=400",
+    effects: { doubleRewardChance: 0.10 },
   },
   {
     key: "indestructible_symbol",
@@ -168,7 +181,8 @@ export const TAP_ARTIFACTS: TapArtifact[] = [
     xpBonus: 1000,
     costXP: 0,
     costStars: 2500,
-    image: "/images/tap-indestructible-symbol.jpg",
+    image: "https://images.pexels.com/photos/1209843/pexels-photo-1209843.jpeg?auto=compress&cs=tinysrgb&w=400",
+    effects: { autoclickerSpeed: 2.0, doubleRewardChance: 0.15 },
   },
 ];
 
@@ -191,7 +205,66 @@ export interface UserStats {
 // ── Stage 2&3 Types ────────────────────────────────────────────────────────────
 
 export type ArtifactCategory = "kyivan_rus" | "cossack_era" | "unr" | "modern_ukraine";
-export type ArtifactRarity = "common" | "rare" | "epic" | "legendary";
+export type ArtifactRarity = "common" | "rare" | "epic" | "legendary" | "mythic";
+
+export interface Guild {
+  id: number;
+  name: string;
+  icon: string;
+  color: string;
+  leader_id: number;
+  total_xp: number;
+  weekly_xp: number;
+  max_members: number;
+  description?: string;
+  join_type?: "open" | "invite" | "closed";
+  required_xp?: number;
+  trophies?: number;
+}
+
+export interface GuildMember {
+  user_id: number;
+  guild_id: number;
+  role: "leader" | "coleader" | "elder" | "member";
+  weekly_xp: number;
+  total_contribution: number;
+  first_name?: string;
+  photo_url?: string;
+}
+
+export interface GuildWithMembers extends Guild {
+  member_count: number;
+  members?: GuildMember[];
+}
+
+export interface SpinResult {
+  freeSpins: number;
+  lastFreeSpinDate: string | null;
+}
+
+export interface Season {
+  id: string;
+  name_ua: string;
+  name_en: string;
+  start_date: string;
+  end_date: string;
+  total_tiers: number;
+}
+
+export interface UserSeasonProgress {
+  id: number;
+  user_id: number;
+  season_id: string;
+  current_xp: number;
+  has_premium: boolean;
+}
+
+export interface SeasonTierClaim {
+  id: number;
+  user_season_id: number;
+  tier: number;
+  claim_type: "free" | "premium";
+}
 
 export interface MuseumArtifact {
   id: string;
@@ -226,6 +299,39 @@ export interface MuseumProgress {
   articles_unlocked: number;
   collection_completed: boolean;
 }
+
+export interface DailyQuest {
+  id: number;
+  quest_key: string;
+  target_count: number;
+  reward_xp: number;
+  title_ua: string;
+  title_en: string;
+  quest_date: string;
+}
+
+export interface DailyQuestProgress {
+  id: number;
+  user_id: number;
+  daily_quest_id: number;
+  current_count: number;
+  completed: boolean;
+  claimed: boolean;
+}
+
+export const DAILY_QUEST_TEMPLATES: Array<{
+  quest_key: string;
+  targetRange: [number, number];
+  rewardRange: [number, number];
+  title_ua: string;
+  title_en: string;
+}> = [
+  { quest_key: "daily_taps", targetRange: [500, 2000], rewardRange: [25, 75], title_ua: "Зроби {n} тапів", title_en: "Make {n} taps" },
+  { quest_key: "daily_view_artifacts", targetRange: [3, 8], rewardRange: [25, 50], title_ua: "Переглянь {n} артефактів", title_en: "View {n} artifacts" },
+  { quest_key: "daily_read_articles", targetRange: [1, 3], rewardRange: [25, 50], title_ua: "Прочитай {n} статей", title_en: "Read {n} articles" },
+  { quest_key: "daily_spin", targetRange: [1, 1], rewardRange: [50, 50], title_ua: "Зроби 1 спін", title_en: "Do 1 spin" },
+  { quest_key: "daily_claim", targetRange: [1, 1], rewardRange: [25, 25], title_ua: "Забери щоденну нагороду", title_en: "Claim daily reward" },
+];
 
 export interface ReferralStats {
   invitedCount: number;
@@ -291,7 +397,51 @@ export const RARITY_META: Record<ArtifactRarity, { ua: string; en: string; color
   rare: { ua: "Рідкісний", en: "Rare", color: "#3b82f6", glow: "0 0 8px rgba(59,130,246,0.4)" },
   epic: { ua: "Епічний", en: "Epic", color: "#a855f7", glow: "0 0 12px rgba(168,85,247,0.4)" },
   legendary: { ua: "Легендарний", en: "Legendary", color: "#ffd700", glow: "0 0 16px rgba(255,215,0,0.5)" },
+  mythic: { ua: "Міфічний", en: "Mythic", color: "#ef4444", glow: "0 0 20px rgba(239,68,68,0.6)" },
 };
+
+export const UNIFIED_ACHIEVEMENTS: Array<{
+  key: string;
+  ua: string;
+  en: string;
+  rarity: "common" | "rare" | "epic" | "legendary";
+  xpReward: number;
+  condition?: { type: string; value: number };
+}> = [
+  // Museum achievements (from ProfileScreen)
+  { key: "FIRST_VISIT", ua: "Перший візит", en: "First Visit", rarity: "common", xpReward: 10 },
+  { key: "FIRST_ARTIFACT_VIEW", ua: "Перший артефакт", en: "First Artifact", rarity: "common", xpReward: 25 },
+  { key: "ONE_HOUR", ua: "Година в музеї", en: "One Hour", rarity: "rare", xpReward: 100 },
+  { key: "TEN_ARTIFACTS", ua: "10 артефактів", en: "10 Artifacts", rarity: "rare", xpReward: 100 },
+  { key: "ALL_ARTIFACTS", ua: "Всі артефакти", en: "All Artifacts", rarity: "legendary", xpReward: 500 },
+  { key: "FIRST_ARTICLE", ua: "Перша стаття", en: "First Article", rarity: "rare", xpReward: 50 },
+  // Tap achievements (from Achievements.tsx)
+  { key: "FIRST_TAP", ua: "Перший Крок", en: "First Step", rarity: "common", xpReward: 10, condition: { type: "taps", value: 1 } },
+  { key: "TAP_100", ua: "Початківець", en: "Beginner", rarity: "common", xpReward: 50, condition: { type: "taps", value: 100 } },
+  { key: "TAP_1000", ua: "Енергетик", en: "Energetic", rarity: "rare", xpReward: 200, condition: { type: "taps", value: 1000 } },
+  { key: "TAP_10000", ua: "Тап-Майстер", en: "Tap Master", rarity: "epic", xpReward: 500, condition: { type: "taps", value: 10000 } },
+  // XP achievements
+  { key: "XP_1000", ua: "Колекціонер", en: "Collector", rarity: "rare", xpReward: 100, condition: { type: "xp", value: 1000 } },
+  { key: "XP_10000", ua: "Мільйонер XP", en: "XP Millionaire", rarity: "legendary", xpReward: 1000, condition: { type: "xp", value: 10000 } },
+  // Artifact purchase achievements
+  { key: "ARTIFACTS_5", ua: "Збирач", en: "Gatherer", rarity: "common", xpReward: 100, condition: { type: "artifacts", value: 5 } },
+  { key: "ARTIFACTS_ALL", ua: "Повна Колекція", en: "Full Collection", rarity: "legendary", xpReward: 2000, condition: { type: "artifacts", value: 11 } },
+  // Social achievements
+  { key: "FIRST_REFERRAL", ua: "Перший Друг", en: "First Friend", rarity: "rare", xpReward: 200, condition: { type: "referrals", value: 1 } },
+  { key: "REFERRALS_10", ua: "Інфлюенсер", en: "Influencer", rarity: "epic", xpReward: 500, condition: { type: "referrals", value: 10 } },
+  // Donation achievements
+  { key: "FIRST_DONATION", ua: "Перший Внесок", en: "First Contribution", rarity: "common", xpReward: 50, condition: { type: "donated", value: 1 } },
+  { key: "DONATED_100", ua: "Меценат 100", en: "Patron 100", rarity: "rare", xpReward: 200, condition: { type: "donated", value: 100 } },
+  { key: "DONATED_1000", ua: "Меценат 1000", en: "Patron 1000", rarity: "epic", xpReward: 500, condition: { type: "donated", value: 1000 } },
+  // Streak achievements
+  { key: "STREAK_7", ua: "Серія 7 днів", en: "7-Day Streak", rarity: "rare", xpReward: 300, condition: { type: "streak", value: 7 } },
+  { key: "STREAK_30", ua: "Серія 30 днів", en: "30-Day Streak", rarity: "legendary", xpReward: 1000, condition: { type: "streak", value: 30 } },
+  // Collection achievements
+  { key: "COLLECTION_KYIVAN_RUS", ua: "Колекція: Київська Русь", en: "Collection: Kyivan Rus", rarity: "epic", xpReward: 200 },
+  { key: "COLLECTION_COSSACK_ERA", ua: "Колекція: Козацька Доба", en: "Collection: Cossack Era", rarity: "epic", xpReward: 200 },
+  { key: "COLLECTION_UNR", ua: "Колекція: УНР", en: "Collection: UNR", rarity: "epic", xpReward: 200 },
+  { key: "COLLECTION_MODERN_UKRAINE", ua: "Колекція: Сучасна", en: "Collection: Modern", rarity: "epic", xpReward: 200 },
+];
 
 export const REFERRAL_MILESTONES = [
   { count: 1, reward_type: "artifact", reward_key: "ref_common_1", label: { ua: "Артефакт", en: "Artifact" } },
@@ -311,14 +461,18 @@ export const DAILY_REWARDS = [
 ];
 
 const RANK_THRESHOLDS = [
-  { minXP: 0,       key: "novice",    ua: "Новачок",        en: "Novice",        nextXP: 100    },
-  { minXP: 100,     key: "explorer",  ua: "Дослідник",      en: "Explorer",      nextXP: 500    },
-  { minXP: 500,     key: "historian", ua: "Історик",        en: "Historian",     nextXP: 2000   },
-  { minXP: 2000,    key: "patron",    ua: "Патрон",         en: "Patron",        nextXP: 5000   },
-  { minXP: 5000,    key: "legend",    ua: "Легенда музею",  en: "Museum Legend", nextXP: 10000  },
-  { minXP: 10000,   key: "hero",      ua: "Герой",          en: "Hero",          nextXP: 50000  },
-  { minXP: 50000,   key: "champion",  ua: "Чемпіон",        en: "Champion",      nextXP: 200000 },
-  { minXP: 200000,  key: "immortal",  ua: "Безсмертний",    en: "Immortal",      nextXP: 1000000},
+  { minXP: 0,        key: "novice",      ua: "Новачок",              en: "Novice",              nextXP: 100     },
+  { minXP: 100,      key: "explorer",    ua: "Дослідник",            en: "Explorer",            nextXP: 500     },
+  { minXP: 500,      key: "seeker",      ua: "Шукач",               en: "Seeker",              nextXP: 1500    },
+  { minXP: 1500,     key: "historian",   ua: "Історик",             en: "Historian",           nextXP: 5000    },
+  { minXP: 5000,     key: "curator",     ua: "Зберігач",            en: "Curator",             nextXP: 15000   },
+  { minXP: 15000,    key: "patron",      ua: "Патрон",              en: "Patron",              nextXP: 50000   },
+  { minXP: 50000,    key: "guardian",    ua: "Охоронець",           en: "Guardian",            nextXP: 150000  },
+  { minXP: 150000,   key: "legend",      ua: "Легенда музею",       en: "Museum Legend",       nextXP: 500000  },
+  { minXP: 500000,   key: "hero",        ua: "Герой",               en: "Hero",                nextXP: 1500000 },
+  { minXP: 1500000,  key: "champion",    ua: "Чемпіон",             en: "Champion",            nextXP: 5000000 },
+  { minXP: 5000000,  key: "immortal",    ua: "Безсмертний",         en: "Immortal",            nextXP: 15000000},
+  { minXP: 15000000, key: "founder",     ua: "Засновник",           en: "Founder",             nextXP: 50000000},
 ];
 
 function getRank(totalXP: number, lang: "ua" | "en") {
@@ -567,7 +721,9 @@ export class MuseumAPI {
       throw error;
     }
 
-    await this.addXPAtomic(userId, Math.floor(amount));
+    // Diminishing XP from Stars: first 50 = 1:1, then 0.5:1
+    const xpFromDonation = Math.floor(amount <= 50 ? amount : 50 + (amount - 50) * 0.5);
+    await this.addXPAtomic(userId, xpFromDonation);
     await this.awardAchievement(userId, "FIRST_DONATION");
 
     const { data: dons } = await supabase
@@ -663,6 +819,7 @@ export class MuseumAPI {
 
     // Update quest progress for tap_count
     await this.updateQuestProgress(userId, "tap_count", count);
+    await this.updateDailyQuestProgress(userId, "daily_taps", count);
 
     return { newTaps: tapResult || 0, newXp: xpResult || 0 };
   }
@@ -688,11 +845,24 @@ export class MuseumAPI {
     const currentXP = user?.total_xp || 0;
     if (currentXP < costXP) return { success: false, newLevel: state.tap_level, xpSpent: 0 };
 
-    await supabase.rpc("atomic_add_xp", { p_user_id: userId, p_xp: -costXP });
-    await supabase
+    // Deduct XP first, then update level - rollback XP if level update fails
+    const { error: xpError } = await supabase.rpc("atomic_add_xp", { p_user_id: userId, p_xp: -costXP });
+    if (xpError) {
+      console.error("Deduct XP for upgrade error:", xpError);
+      return { success: false, newLevel: state.tap_level, xpSpent: 0 };
+    }
+
+    const { error: updateError } = await supabase
       .from("tap_game_state")
       .update({ tap_level: nextLevel, updated_at: new Date().toISOString() })
       .eq("user_id", userId);
+
+    if (updateError) {
+      console.error("Update tap level error:", updateError);
+      // Rollback XP
+      await supabase.rpc("atomic_add_xp", { p_user_id: userId, p_xp: costXP });
+      return { success: false, newLevel: state.tap_level, xpSpent: 0 };
+    }
 
     return { success: true, newLevel: nextLevel, xpSpent: costXP };
   }
@@ -801,6 +971,40 @@ export class MuseumAPI {
       p_xp: xpToAdd,
     });
     if (error) console.error("Atomic add XP error:", error);
+
+    // Also add to active season progress
+    if (xpToAdd > 0) {
+      try {
+        const { data: activeSeason } = await supabase
+          .from("seasons")
+          .select("id")
+          .eq("is_active", true)
+          .lte("start_date", new Date().toISOString())
+          .gte("end_date", new Date().toISOString())
+          .maybeSingle();
+
+        if (activeSeason) {
+          const { data: seasonProgress } = await supabase
+            .from("user_season_progress")
+            .select("id, current_xp")
+            .eq("user_id", userId)
+            .eq("season_id", activeSeason.id)
+            .maybeSingle();
+
+          if (seasonProgress) {
+            await supabase
+              .from("user_season_progress")
+              .update({
+                current_xp: (seasonProgress.current_xp || 0) + xpToAdd,
+                updated_at: new Date().toISOString(),
+              })
+              .eq("id", seasonProgress.id);
+          }
+        }
+      } catch {
+        // Season progress update is non-critical, don't block XP addition
+      }
+    }
   }
 
   // ── Achievements ───────────────────────────────────────────────────────────
@@ -870,6 +1074,7 @@ export class MuseumAPI {
 
     // Update quest progress
     await this.updateQuestProgress(userId, "view_artifacts", 1);
+    await this.updateDailyQuestProgress(userId, "daily_view_artifacts", 1);
 
     return { xpEarned: 10, newViews: uniqueViews };
   }
@@ -960,6 +1165,7 @@ export class MuseumAPI {
 
     // Update quest progress
     await this.updateQuestProgress(userId, "read_articles", 1);
+    await this.updateDailyQuestProgress(userId, "daily_read_articles", 1);
 
     return { unlocked: true, xpEarned: 25 };
   }
@@ -1086,11 +1292,24 @@ export class MuseumAPI {
     }]);
 
     if (applicableReward.reward_type === "xp") {
-      await this.addXPAtomic(userId, applicableReward.amount);
+      let xpAmount = applicableReward.amount;
+      // Apply streak bonus from owned artifacts
+      const { data: ownedArts } = await supabase
+        .from("tap_artifacts")
+        .select("artifact_key")
+        .eq("user_id", userId);
+      const ownedKeys = new Set((ownedArts || []).map((a: { artifact_key: string }) => a.artifact_key));
+      const streakBonus = TAP_ARTIFACTS
+        .filter(a => ownedKeys.has(a.key) && a.effects?.streakBonus)
+        .reduce((sum, a) => sum + (a.effects?.streakBonus || 0), 0);
+      xpAmount += streakBonus * streak.current_streak;
+      await this.addXPAtomic(userId, xpAmount);
     }
 
     if (streak.current_streak >= 7) await this.awardAchievement(userId, "STREAK_7");
     if (streak.current_streak >= 30) await this.awardAchievement(userId, "STREAK_30");
+
+    await this.updateDailyQuestProgress(userId, "daily_claim", 1);
 
     return { claimed: true, streakDay, reward: applicableReward };
   }
@@ -1283,6 +1502,437 @@ export class MuseumAPI {
       .eq("user_id", userId);
     if (error) { console.error("Get viewed artifacts error:", error); return new Set(); }
     return new Set((data || []).map((v: { artifact_id: string }) => v.artifact_id));
+  }
+
+  // ── Public XP ─────────────────────────────────────────────────────────────────
+
+  async addXP(userId: number, xpToAdd: number): Promise<number> {
+    const { data, error } = await supabase.rpc("atomic_add_xp", {
+      p_user_id: userId,
+      p_xp: xpToAdd,
+    });
+    if (error) console.error("Add XP error:", error);
+    return data || 0;
+  }
+
+  // ── Achievement Keys (public) ─────────────────────────────────────────────────
+
+  async getAchievementKeys(userId: number): Promise<string[]> {
+    const { data, error } = await supabase
+      .from("achievements")
+      .select("achievement_key")
+      .eq("user_id", userId);
+    if (error) { console.error("Get achievement keys error:", error); return []; }
+    return (data || []).map((a: { achievement_key: string }) => a.achievement_key);
+  }
+
+  async checkAndAwardTapAchievements(userId: number, totalTaps: number, totalXP: number, ownedCount: number): Promise<void> {
+    const checks: Array<[number, string]> = [
+      [1, "FIRST_TAP"], [100, "TAP_100"], [1000, "TAP_1000"], [10000, "TAP_10000"],
+    ];
+    for (const [threshold, key] of checks) {
+      if (totalTaps >= threshold) await this.awardAchievement(userId, key);
+    }
+    if (totalXP >= 1000) await this.awardAchievement(userId, "XP_1000");
+    if (totalXP >= 10000) await this.awardAchievement(userId, "XP_10000");
+    if (ownedCount >= 5) await this.awardAchievement(userId, "ARTIFACTS_5");
+    if (ownedCount >= 11) await this.awardAchievement(userId, "ARTIFACTS_ALL");
+  }
+
+  // ── Guilds ────────────────────────────────────────────────────────────────────
+
+  async getGuilds(): Promise<GuildWithMembers[]> {
+    const { data, error } = await supabase
+      .from("guilds")
+      .select("*")
+      .order("total_xp", { ascending: false })
+      .limit(20);
+    if (error) { console.error("Get guilds error:", error); return []; }
+
+    const guilds = data || [];
+    const result: GuildWithMembers[] = [];
+    for (const g of guilds) {
+      const { count } = await supabase
+        .from("guild_members")
+        .select("*", { count: "exact", head: true })
+        .eq("guild_id", g.id);
+      result.push({ ...g, member_count: count || 0 });
+    }
+    return result;
+  }
+
+  async getUserGuild(userId: number): Promise<GuildWithMembers | null> {
+    const { data: membership } = await supabase
+      .from("guild_members")
+      .select("guild_id")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (!membership) return null;
+
+    const { data: guild } = await supabase
+      .from("guilds")
+      .select("*")
+      .eq("id", membership.guild_id)
+      .maybeSingle();
+    if (!guild) return null;
+
+    const { data: members } = await supabase
+      .from("guild_members")
+      .select("*, users(first_name, photo_url)")
+      .eq("guild_id", guild.id);
+
+    const { count } = await supabase
+      .from("guild_members")
+      .select("*", { count: "exact", head: true })
+      .eq("guild_id", guild.id);
+
+    return {
+      ...guild,
+      member_count: count || 0,
+      members: (members || []).map((m: GuildMember & { users?: { first_name: string; photo_url: string | null } }) => ({
+        ...m,
+        first_name: m.users?.first_name,
+        photo_url: m.users?.photo_url,
+      })),
+    };
+  }
+
+  async joinGuild(userId: number, guildId: number): Promise<{ success: boolean }> {
+    const { error } = await supabase
+      .from("guild_members")
+      .upsert([{ guild_id: guildId, user_id: userId, role: "member" }], { onConflict: "user_id" });
+    if (error) { console.error("Join guild error:", error); return { success: false }; }
+    return { success: true };
+  }
+
+  async createGuild(userId: number, name: string, icon: string, color: string): Promise<{ success: boolean; guildId?: number }> {
+    const { data: user } = await supabase
+      .from("users")
+      .select("total_xp")
+      .eq("id", userId)
+      .maybeSingle();
+    if (!user || user.total_xp < 5000) return { success: false };
+
+    const { data: guild, error } = await supabase
+      .from("guilds")
+      .insert([{ name, icon, color, leader_id: userId }])
+      .select()
+      .single();
+    if (error) { console.error("Create guild error:", error); return { success: false }; }
+
+    await supabase
+      .from("guild_members")
+      .upsert([{ guild_id: guild.id, user_id: userId, role: "leader" }], { onConflict: "user_id" });
+    await supabase.rpc("atomic_add_xp", { p_user_id: userId, p_xp: -5000 });
+    return { success: true, guildId: guild.id };
+  }
+
+  async leaveGuild(userId: number): Promise<void> {
+    await supabase.from("guild_members").delete().eq("user_id", userId);
+  }
+
+  // ── Lucky Spin ────────────────────────────────────────────────────────────────
+
+  async getLuckySpins(userId: number): Promise<SpinResult> {
+    const { data } = await supabase
+      .from("lucky_spins")
+      .select("free_spins, last_free_spin_date")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (!data) {
+      await supabase.from("lucky_spins").upsert(
+        [{ user_id: userId, free_spins: 1, last_free_spin_date: null }],
+        { onConflict: "user_id" }
+      );
+      return { freeSpins: 1, lastFreeSpinDate: null };
+    }
+
+    const today = new Date().toISOString().slice(0, 10);
+    const lastSpinDate = data.last_free_spin_date ? String(data.last_free_spin_date).slice(0, 10) : null;
+    if (lastSpinDate && lastSpinDate < today && (data.free_spins || 0) === 0) {
+      await supabase.from("lucky_spins").update({ free_spins: 1 }).eq("user_id", userId);
+      return { freeSpins: 1, lastFreeSpinDate: lastSpinDate };
+    }
+
+    return { freeSpins: data.free_spins || 0, lastFreeSpinDate: lastSpinDate };
+  }
+
+  async consumeSpin(userId: number): Promise<void> {
+    const today = new Date().toISOString().slice(0, 10);
+    await supabase
+      .from("lucky_spins")
+      .upsert([{ user_id: userId, free_spins: 0, last_free_spin_date: today }], { onConflict: "user_id" });
+  }
+
+  async recordSpinReward(userId: number, rewardType: string, rewardValue: number): Promise<void> {
+    await supabase
+      .from("spin_rewards_log")
+      .insert([{ user_id: userId, reward_type: rewardType, reward_value: rewardValue }]);
+    if (rewardType === "xp") {
+      await this.addXP(userId, rewardValue);
+    }
+    await this.updateDailyQuestProgress(userId, "daily_spin", 1);
+  }
+
+  // ── Season Pass ───────────────────────────────────────────────────────────────
+
+  async getActiveSeason(): Promise<Season | null> {
+    const today = new Date().toISOString();
+    const { data, error } = await supabase
+      .from("seasons")
+      .select("*")
+      .lte("start_date", today)
+      .gte("end_date", today)
+      .maybeSingle();
+    if (error) { console.error("Get active season error:", error); return null; }
+    return data;
+  }
+
+  async getUserSeasonProgress(userId: number, seasonId: string): Promise<UserSeasonProgress> {
+    const { data: existing } = await supabase
+      .from("user_season_progress")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("season_id", seasonId)
+      .maybeSingle();
+    if (existing) return existing;
+
+    const { data, error } = await supabase
+      .from("user_season_progress")
+      .insert([{ user_id: userId, season_id: seasonId, current_xp: 0, has_premium: false }])
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  }
+
+  async getSeasonTierClaims(userSeasonId: number): Promise<SeasonTierClaim[]> {
+    const { data, error } = await supabase
+      .from("season_tier_claims")
+      .select("*")
+      .eq("user_season_id", userSeasonId);
+    if (error) { console.error("Get tier claims error:", error); return []; }
+    return data || [];
+  }
+
+  async claimSeasonTier(userId: number, userSeasonId: number, tier: number, claimType: "free" | "premium"): Promise<{ claimed: boolean; xpEarned: number }> {
+    const { data: existing } = await supabase
+      .from("season_tier_claims")
+      .select("id")
+      .eq("user_season_id", userSeasonId)
+      .eq("tier", tier)
+      .eq("claim_type", claimType)
+      .maybeSingle();
+    if (existing) return { claimed: false, xpEarned: 0 };
+
+    const { error } = await supabase
+      .from("season_tier_claims")
+      .insert([{ user_season_id: userSeasonId, tier, claim_type: claimType }]);
+    if (error) { console.error("Claim season tier error:", error); return { claimed: false, xpEarned: 0 }; }
+
+    const xpEarned = tier * (claimType === "premium" ? 100 : 50);
+    await this.addXP(userId, xpEarned);
+    return { claimed: true, xpEarned };
+  }
+
+  async buySeasonPremium(userId: number, seasonId: string): Promise<{ success: boolean }> {
+    const { error } = await supabase
+      .from("user_season_progress")
+      .update({ has_premium: true })
+      .eq("user_id", userId)
+      .eq("season_id", seasonId);
+    if (error) { console.error("Buy season premium error:", error); return { success: false }; }
+    return { success: true };
+  }
+
+  // ── Daily Quests ────────────────────────────────────────────────────────────────
+
+  async getDailyQuests(): Promise<DailyQuest[]> {
+    const today = new Date().toISOString().slice(0, 10);
+
+    const { data: existing, error } = await supabase
+      .from("daily_quests")
+      .select("*")
+      .eq("quest_date", today);
+
+    if (error) { console.error("Get daily quests error:", error); return []; }
+
+    if (existing && existing.length > 0) return existing;
+
+    // Generate new daily quests for today
+    const seededRandom = (seed: number) => {
+      const x = Math.sin(seed) * 10000;
+      return x - Math.floor(x);
+    };
+
+    const daySeed = new Date(today).getTime() / 86400000;
+    const selected: Array<{ quest_key: string; target_count: number; reward_xp: number; title_ua: string; title_en: string }> = [];
+
+    const shuffledTemplates = [...DAILY_QUEST_TEMPLATES].sort((a, b) =>
+      seededRandom(daySeed + a.quest_key.charCodeAt(0)) - seededRandom(daySeed + b.quest_key.charCodeAt(0))
+    );
+
+    for (let i = 0; i < Math.min(3, shuffledTemplates.length); i++) {
+      const template = shuffledTemplates[i];
+      const r = seededRandom(daySeed + i * 7 + 13);
+      const target = Math.round(template.targetRange[0] + r * (template.targetRange[1] - template.targetRange[0]));
+      const reward = Math.round(template.rewardRange[0] + (target - template.targetRange[0]) / (template.targetRange[1] - template.targetRange[0]) * (template.rewardRange[1] - template.rewardRange[0]));
+      const replaceN = (str: string) => str.replace("{n}", String(target));
+      selected.push({
+        quest_key: template.quest_key,
+        target_count: target,
+        reward_xp: reward,
+        title_ua: replaceN(template.title_ua),
+        title_en: replaceN(template.title_en),
+      });
+    }
+
+    const { data: inserted, error: insertError } = await supabase
+      .from("daily_quests")
+      .insert(selected.map(q => ({ ...q, quest_date: today })))
+      .select();
+
+    if (insertError) { console.error("Insert daily quests error:", insertError); return []; }
+    return inserted || [];
+  }
+
+  async getDailyQuestProgress(userId: number): Promise<DailyQuestProgress[]> {
+    const { data, error } = await supabase
+      .from("user_daily_quest_progress")
+      .select("*")
+      .eq("user_id", userId);
+    if (error) { console.error("Get daily quest progress error:", error); return []; }
+    return data || [];
+  }
+
+  async updateDailyQuestProgress(userId: number, questKey: string, increment: number = 1): Promise<void> {
+    const today = new Date().toISOString().slice(0, 10);
+    const { data: quests } = await supabase
+      .from("daily_quests")
+      .select("id, quest_key, target_count")
+      .eq("quest_key", questKey)
+      .eq("quest_date", today);
+
+    if (!quests || quests.length === 0) return;
+
+    for (const quest of quests) {
+      const { data: existing } = await supabase
+        .from("user_daily_quest_progress")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("daily_quest_id", quest.id)
+        .maybeSingle();
+
+      if (existing) {
+        if (existing.claimed) continue;
+        const newCount = Math.min((existing.current_count || 0) + increment, quest.target_count);
+        const completed = newCount >= quest.target_count;
+        await supabase
+          .from("user_daily_quest_progress")
+          .update({ current_count: newCount, completed })
+          .eq("id", existing.id);
+      } else {
+        const completed = increment >= quest.target_count;
+        await supabase
+          .from("user_daily_quest_progress")
+          .insert([{
+            user_id: userId,
+            daily_quest_id: quest.id,
+            current_count: Math.min(increment, quest.target_count),
+            completed,
+          }]);
+      }
+    }
+  }
+
+  async claimDailyQuestReward(userId: number, questId: number): Promise<{ claimed: boolean; xpEarned: number }> {
+    const { data: progress } = await supabase
+      .from("user_daily_quest_progress")
+      .select("completed, claimed")
+      .eq("user_id", userId)
+      .eq("daily_quest_id", questId)
+      .maybeSingle();
+
+    if (!progress || !progress.completed || progress.claimed) return { claimed: false, xpEarned: 0 };
+
+    const { data: quest } = await supabase
+      .from("daily_quests")
+      .select("reward_xp")
+      .eq("id", questId)
+      .maybeSingle();
+
+    const xpEarned = quest?.reward_xp || 0;
+
+    await supabase
+      .from("user_daily_quest_progress")
+      .update({ claimed: true })
+      .eq("user_id", userId)
+      .eq("daily_quest_id", questId);
+
+    await this.addXPAtomic(userId, xpEarned);
+    return { claimed: true, xpEarned };
+  }
+
+  // ── Limited Artifacts ────────────────────────────────────────────────────────
+
+  async getLimitedArtifacts(userId: number): Promise<Array<{
+    id: string; name: { ua: string; en: string }; description: { ua: string; en: string };
+    image: string; xpBonus: number; rarity: string; availableUntil: string;
+    totalSupply: number; claimedCount: number; costStars: number; isOwned: boolean;
+  }>> {
+    const { data, error } = await supabase
+      .from("limited_artifacts")
+      .select("*")
+      .gt("available_until", new Date().toISOString())
+      .order("cost_stars", { ascending: true });
+
+    if (error) { console.error("Get limited artifacts error:", error); return []; }
+
+    const { data: owned } = await supabase
+      .from("user_limited_artifacts")
+      .select("limited_artifact_id")
+      .eq("user_id", userId);
+
+    const ownedIds = new Set((owned || []).map((o: { limited_artifact_id: number }) => o.limited_artifact_id));
+
+    return (data || []).map(a => ({
+      id: String(a.id),
+      name: { ua: a.name_ua, en: a.name_en },
+      description: { ua: a.description_ua || '', en: a.description_en || '' },
+      image: a.image_url || '',
+      xpBonus: a.xp_bonus,
+      rarity: a.rarity,
+      availableUntil: a.available_until,
+      totalSupply: a.total_supply,
+      claimedCount: a.claimed_count,
+      costStars: a.cost_stars,
+      isOwned: ownedIds.has(a.id),
+    }));
+  }
+
+  async claimLimitedArtifact(userId: number, artifactId: string): Promise<{ success: boolean }> {
+    const { data: artifact } = await supabase
+      .from("limited_artifacts")
+      .select("claimed_count, total_supply, xp_bonus")
+      .eq("id", parseInt(artifactId))
+      .maybeSingle();
+
+    if (!artifact || artifact.claimed_count >= artifact.total_supply) return { success: false };
+
+    const { error } = await supabase
+      .from("user_limited_artifacts")
+      .insert([{ user_id: userId, limited_artifact_id: parseInt(artifactId) }]);
+
+    if (error) { console.error("Claim limited artifact error:", error); return { success: false }; }
+
+    await supabase
+      .from("limited_artifacts")
+      .update({ claimed_count: artifact.claimed_count + 1 })
+      .eq("id", parseInt(artifactId));
+
+    await this.addXPAtomic(userId, artifact.xp_bonus);
+    return { success: true };
   }
 }
 
