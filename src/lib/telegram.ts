@@ -90,10 +90,28 @@ export function getTelegramUser(): TelegramUser | null {
     return null;
   }
 
-  const user = window.Telegram.WebApp.initDataUnsafe?.user;
+  const initData = window.Telegram.WebApp.initData;
+  const initDataUnsafe = window.Telegram.WebApp.initDataUnsafe;
+  const user = initDataUnsafe?.user;
 
-  if (!user) {
+  // Basic integrity: must have initData string and valid user object
+  if (!initData || !user) {
     return null;
+  }
+
+  // Reject flagged users
+  if (user.is_fake || user.is_scam || user.is_bot) {
+    console.warn("Telegram user flagged as fake/scam/bot");
+    return null;
+  }
+
+  // Check auth_date freshness (reject initData older than 24h)
+  if (initDataUnsafe.auth_date) {
+    const authAge = Date.now() / 1000 - initDataUnsafe.auth_date;
+    if (authAge > 86400) {
+      console.warn("Telegram initData expired");
+      return null;
+    }
   }
 
   return {
@@ -194,6 +212,3 @@ export function setMainButtonLoading(loading: boolean): void {
     }
   }
 }
-
-
-
