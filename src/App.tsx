@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { initTelegram, getTelegramUser, getStartParam, triggerHapticFeedback, triggerHapticNotification } from "./lib/telegram";
 import { museumAPI, TAP_LEVELS, MAX_TAP_LEVEL, AUTOCLICKER_OPTIONS, TAP_ARTIFACTS } from "./lib/api";
-import type { UserStats, TapGameState, TapArtifact, AutoclikerOption, DailyStreak, DailyClaim, GuildWithMembers, Season, UserSeasonProgress, SeasonTierClaim } from "./lib/api";
+import type { UserStats, TapGameState, TapArtifact, AutoclikerOption } from "./lib/api";
 import { TIMELINE_EVENT_DETAILS } from "./lib/timeline-data";
 import type { TimelineEventDetail } from "./lib/timeline-data";
 import { motion, AnimatePresence } from "motion/react";
@@ -50,6 +50,7 @@ import { Leaderboard } from "./components/Leaderboard";
 import { Guilds } from "./components/Guilds";
 import { LimitedArtifactsModal } from "./components/LimitedArtifacts";
 import { SeasonPass } from "./components/SeasonPass";
+import { OpeningAnimation } from "./components/Animations";
 import { soundManager, initSounds } from "./lib/sounds";
 import type { Particle } from "./components/Particles";
 
@@ -99,7 +100,7 @@ const ARTIFACTS: Artifact[] = [
       ua: "Архітектурний шедевр Київської Русі, збудований за часів Ярослава Мудрого. Собор є одним із найважливіших символів української культури та історії.",
       en: "Architectural masterpiece of Kyivan Rus, built during the reign of Yaroslav the Wise. The cathedral is one of the most important symbols of Ukrainian culture and history.",
     },
-    image: "https://images.pexels.com/photos/1678808/pexels-photo-1678808.jpeg?auto=compress&cs=tinysrgb&w=600",
+    image: "/images/sofia-cathedral.jpg",
     category: "Архітектура",
   },
   {
@@ -111,7 +112,7 @@ const ARTIFACTS: Artifact[] = [
       ua: "Національний символ України - вишита сорочка з унікальними орнаментами. Кожен регіон має власні візерунки та символіку.",
       en: "National symbol of Ukraine - embroidered shirt with unique ornaments. Each region has its own patterns and symbolism.",
     },
-    image: "https://images.pexels.com/photos/3621188/pexels-photo-3621188.jpeg?auto=compress&cs=tinysrgb&w=600",
+    image: "/images/vyshyvanka.jpg",
     category: "Культура",
   },
   {
@@ -123,7 +124,7 @@ const ARTIFACTS: Artifact[] = [
       ua: "Давнє українське мистецтво розпису великодніх яєць символічними орнаментами. Кожен символ несе глибоке духовне значення.",
       en: "Ancient Ukrainian art of painting Easter eggs with symbolic ornaments. Each symbol carries deep spiritual meaning.",
     },
-    image: "https://images.pexels.com/photos/3817526/pexels-photo-3817526.jpeg?auto=compress&cs=tinysrgb&w=600",
+    image: "/images/pysanka.jpg",
     category: "Мистецтво",
   },
   {
@@ -135,7 +136,7 @@ const ARTIFACTS: Artifact[] = [
       ua: "Фортеця козацької демократії та символ української свободи. Тут народжувалася перша демократична республіка в Європі.",
       en: "Fortress of Cossack democracy and symbol of Ukrainian freedom. The first democratic republic in Europe was born here.",
     },
-    image: "https://images.pexels.com/photos/6045028/pexels-photo-6045028.jpeg?auto=compress&cs=tinysrgb&w=600",
+    image: "/images/zaporizhian-sich.jpg",
     category: "Історія",
   },
   {
@@ -147,7 +148,7 @@ const ARTIFACTS: Artifact[] = [
       ua: "Національний український музичний інструмент з 60+ струнами. Кобзарі співали епічні думи про героїв та історію народу.",
       en: "National Ukrainian musical instrument with 60+ strings. Kobzars sang epic ballads about heroes and the history of the people.",
     },
-    image: "https://images.pexels.com/photos/164769/pexels-photo-164769.jpeg?auto=compress&cs=tinysrgb&w=600",
+    image: "/images/bandura.jpg",
     category: "Музика",
   },
   {
@@ -159,7 +160,7 @@ const ARTIFACTS: Artifact[] = [
       ua: "Столиця України - місто з тисячолітньою історією та сучасною культурою. Центр технологій, мистецтва та інновацій.",
       en: "Capital of Ukraine - city with thousand-year history and modern culture. Center of technology, art and innovation.",
     },
-    image: "https://images.pexels.com/photos/1840421/pexels-photo-1840421.jpeg?auto=compress&cs=tinysrgb&w=600",
+    image: "/images/kyiv.jpg",
     category: "Місто",
   },
   {
@@ -171,7 +172,7 @@ const ARTIFACTS: Artifact[] = [
       ua: "Монастир у печерах, заснований у 1051 р. Одне з найсвятіших місць Східного Православ'я з унікальними підземними лабіринтами.",
       en: "Cave monastery founded in 1051. One of the holiest sites of Eastern Orthodoxy with unique underground labyrinths.",
     },
-    image: "https://images.pexels.com/photos/1624959/pexels-photo-1624959.jpeg?auto=compress&cs=tinysrgb&w=600",
+    image: "/images/lavra.jpg",
     category: "Архітектура",
   },
   {
@@ -183,7 +184,7 @@ const ARTIFACTS: Artifact[] = [
       ua: "Традиція квіткового народного розпису, внесена ЮНЕСКО до списку нематеріальної спадщини. Яскраві квіти та птахи символізують життя.",
       en: "Floral folk painting tradition inscribed on UNESCO's intangible heritage list. Vivid flowers and birds symbolize life.",
     },
-    image: "https://images.pexels.com/photos/3266700/pexels-photo-3266700.jpeg?auto=compress&cs=tinysrgb&w=600",
+    image: "/images/petrykivka.jpg",
     category: "Мистецтво",
   },
 ];
@@ -258,14 +259,14 @@ function ArtifactCard({ artifact, lang, onClick }: { artifact: Artifact; lang: L
 
 // ─── Screens ───────────────────────────────────────────────────────────────────
 
-function HomeScreen({ lang, setSelectedArtifact, setScreen, stats, dbUser }: { lang: Lang; setSelectedArtifact: (a: Artifact) => void; setScreen: (s: Screen) => void; stats: UserStats | null; dbUser: DbUser | null }) {
+function HomeScreen({ lang, setSelectedArtifact, setScreen }: { lang: Lang; setSelectedArtifact: (a: Artifact) => void; setScreen: (s: Screen) => void }) {
   const t = TEXT[lang].home;
 
   const historicalEras = [
-    { id: "kyivan-rus", title: { ua: "Київська Русь", en: "Kyivan Rus" }, period: "882-1240", icon: Crown, image: "https://images.pexels.com/photos/1678808/pexels-photo-1678808.jpeg?auto=compress&cs=tinysrgb&w=400" },
-    { id: "cossack", title: { ua: "Козацька Доба", en: "Cossack Era" }, period: "1648-1775", icon: Sword, image: "https://images.pexels.com/photos/6045028/pexels-photo-6045028.jpeg?auto=compress&cs=tinysrgb&w=400" },
-    { id: "modern", title: { ua: "Сучасна Україна", en: "Modern Ukraine" }, period: "1991-Present", icon: Building2, image: "https://images.pexels.com/photos/1840421/pexels-photo-1840421.jpeg?auto=compress&cs=tinysrgb&w=400" },
-    { id: "future", title: { ua: "Майбутнє", en: "Future Vision" }, period: "2050+", icon: Sparkles, image: "https://images.pexels.com/photos/355748/pexels-photo-355748.jpeg?auto=compress&cs=tinysrgb&w=400" },
+    { id: "kyivan-rus", title: { ua: "Київська Русь", en: "Kyivan Rus" }, period: "882-1240", icon: Crown, image: "/images/era-kyivan-rus.jpg" },
+    { id: "cossack", title: { ua: "Козацька Доба", en: "Cossack Era" }, period: "1648-1775", icon: Sword, image: "/images/era-cossack.jpg" },
+    { id: "modern", title: { ua: "Сучасна Україна", en: "Modern Ukraine" }, period: "1991-Present", icon: Building2, image: "/images/era-modern.jpg" },
+    { id: "future", title: { ua: "Майбутнє", en: "Future Vision" }, period: "2050+", icon: Sparkles, image: "/images/era-future.jpg" },
   ];
 
   const featuredCollections = [
@@ -279,7 +280,7 @@ function HomeScreen({ lang, setSelectedArtifact, setScreen, stats, dbUser }: { l
     <div className="space-y-10 pb-32">
       {/* Cinematic Hero */}
       <div className="relative h-[520px] -mx-4 -mt-4 overflow-hidden">
-        <motion.img initial={{ scale: 1.2 }} animate={{ scale: 1 }} transition={{ duration: 2, ease: [0.22, 1, 0.36, 1] }} src="https://images.pexels.com/photos/1678808/pexels-photo-1678808.jpeg?auto=compress&cs=tinysrgb&w=800" alt="Museum hero" className="w-full h-full object-cover" />
+        <motion.img initial={{ scale: 1.2 }} animate={{ scale: 1 }} transition={{ duration: 2, ease: [0.22, 1, 0.36, 1] }} src="/images/hero.jpg" alt="Museum hero" className="w-full h-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0f] via-[#0a0a0f]/60 to-transparent" />
         <div className="absolute inset-0 bg-gradient-to-b from-[#0a0a0f]/40 to-transparent" />
 
@@ -322,63 +323,6 @@ function HomeScreen({ lang, setSelectedArtifact, setScreen, stats, dbUser }: { l
           ))}
         </div>
       </div>
-
-      {/* What To Do Next */}
-      {stats && dbUser && (() => {
-        const nextAction = (() => {
-          if (stats.artifactsViewed < 3) return { icon: Landmark, label: lang === "ua" ? "Переглянь артефакти" : "View artifacts", screen: "museum" as Screen, color: "#ffd700" };
-          if (stats.totalXP < stats.nextLevelXP) return { icon: MousePointerClick, label: lang === "ua" ? `Набери ${stats.nextLevelXP - stats.totalXP} XP до наступного рангу` : `Earn ${stats.nextLevelXP - stats.totalXP} XP for next rank`, screen: "tap" as Screen, color: "#0057b7" };
-          return { icon: Sparkles, label: lang === "ua" ? "Обери наступну ціль!" : "Choose your next goal!", screen: "tap" as Screen, color: "#ffd700" };
-        })();
-        return (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
-            <GlassCard onClick={() => setScreen(nextAction.screen)} className="p-4 flex items-center gap-4 cursor-pointer group">
-              <div className="p-3 rounded-2xl" style={{ backgroundColor: `${nextAction.color}15`, border: `1px solid ${nextAction.color}30` }}>
-                <nextAction.icon className="w-5 h-5" style={{ color: nextAction.color }} />
-              </div>
-              <div className="flex-1">
-                <div className="text-[10px] text-white/40 font-bold uppercase tracking-wider">{lang === "ua" ? "Наступна мета" : "Next Goal"}</div>
-                <div className="text-sm text-white font-bold">{nextAction.label}</div>
-              </div>
-              <ChevronRight className="w-5 h-5 text-white/20 group-hover:text-white/60 transition-colors" />
-            </GlassCard>
-          </motion.div>
-        );
-      })()}
-
-      {/* Museum Progress */}
-      {stats && stats.artifactsViewed > 0 && (
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}>
-          <GlassCard onClick={() => setScreen("museum")} className="p-4 cursor-pointer group">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <Landmark className="w-4 h-4 text-[#ffd700]" />
-                <span className="text-xs font-bold text-white">{lang === "ua" ? "Прогрес музею" : "Museum Progress"}</span>
-              </div>
-              <ChevronRight className="w-4 h-4 text-white/20 group-hover:text-white/60 transition-colors" />
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="flex-1">
-                <div className="flex justify-between text-[10px] text-white/50 mb-1">
-                  <span>{stats.artifactsViewed}/56 {lang === "ua" ? "артефактів" : "artifacts"}</span>
-                  <span>{Math.round(stats.artifactsViewed / 56 * 100)}%</span>
-                </div>
-                <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${(stats.artifactsViewed / 56) * 100}%` }}
-                    className="h-full bg-gradient-to-r from-[#0057b7] to-[#ffd700] rounded-full"
-                  />
-                </div>
-              </div>
-              <div className="text-center px-2">
-                <div className="text-lg font-black text-[#ffd700]">{stats.level}</div>
-                <div className="text-[9px] text-white/40">{lang === "ua" ? "Ранг" : "Rank"}</div>
-              </div>
-            </div>
-          </GlassCard>
-        </motion.div>
-      )}
 
       {/* Eras */}
       <div className="space-y-8">
@@ -875,20 +819,6 @@ function TapScreen({ lang, dbUser, stats, onRefresh }: { lang: Lang; dbUser: DbU
     };
   }, [flushTaps]);
 
-  // Move artifact bonus calculations BEFORE useEffects that use them
-  // This fixes a hoisting issue where autoclickerSpeedMultiplier was used before it was defined
-  const totalArtifactBonus = TAP_ARTIFACTS
-    .filter(a => ownedArtifacts.includes(a.key))
-    .reduce((sum, a) => sum + a.xpBonus, 0);
-
-  const totalDoubleRewardChance = TAP_ARTIFACTS
-    .filter(a => ownedArtifacts.includes(a.key) && a.effects?.doubleRewardChance)
-    .reduce((sum, a) => sum + (a.effects?.doubleRewardChance || 0), 0);
-
-  const autoclickerSpeedMultiplier = TAP_ARTIFACTS
-    .filter(a => ownedArtifacts.includes(a.key) && a.effects?.autoclickerSpeed)
-    .reduce((max, a) => Math.max(max, a.effects?.autoclickerSpeed || 1), 1);
-
   // Autoclicker tick — auto-tap every second when active
   useEffect(() => {
     const acUntil = tapState?.autoclicker_until;
@@ -918,7 +848,7 @@ function TapScreen({ lang, dbUser, stats, onRefresh }: { lang: Lang; dbUser: DbU
     return () => clearInterval(interval);
   }, [tapState?.autoclicker_until]);
 
-  // Autoclicker auto-tap
+  // Autoclicker auto-tap every second
   useEffect(() => {
     const acUntil = tapState?.autoclicker_until;
     if (!acUntil) return;
@@ -926,10 +856,11 @@ function TapScreen({ lang, dbUser, stats, onRefresh }: { lang: Lang; dbUser: DbU
     const interval = setInterval(() => {
       if (new Date(acUntil).getTime() <= Date.now()) return;
       handleTapRef.current();
-    }, Math.max(200, Math.floor(1000 / autoclickerSpeedMultiplier)));
+    }, 1000);
 
     return () => clearInterval(interval);
-  }, [tapState?.autoclicker_until, dbUser, autoclickerSpeedMultiplier]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tapState?.autoclicker_until, dbUser]);
 
   // Refresh tap state periodically
   useEffect(() => {
@@ -955,6 +886,11 @@ function TapScreen({ lang, dbUser, stats, onRefresh }: { lang: Lang; dbUser: DbU
 
   const levelConfig = TAP_LEVELS.find(l => l.level === (tapState?.tap_level || 1)) || TAP_LEVELS[0];
 
+  // Sum bonuses from ALL owned artifacts (not just active)
+  const totalArtifactBonus = TAP_ARTIFACTS
+    .filter(a => ownedArtifacts.includes(a.key))
+    .reduce((sum, a) => sum + a.xpBonus, 0);
+
   const xpPerTap = levelConfig.xpPerTap + totalArtifactBonus;
 
   // Active artifact determines tap area image only
@@ -966,15 +902,12 @@ function TapScreen({ lang, dbUser, stats, onRefresh }: { lang: Lang; dbUser: DbU
     const id = ++tapIdRef.current;
     const x = 50 + Math.random() * 60 - 30;
     const y = 10 + Math.random() * 20;
-    const isDouble = Math.random() < totalDoubleRewardChance;
-    const earned = isDouble ? xpPerTap * 2 : xpPerTap;
-    const label = isDouble ? `+${earned} XP x2!` : `+${earned} XP`;
-    setFloatingXPs(prev => [...prev, { id, x: x + "%", y, value: label }]);
+    setFloatingXPs(prev => [...prev, { id, x: x + "%", y, value: `+${xpPerTap} XP` }]);
     setTaps(prev => prev + 1);
-    setLocalXP(prev => prev + earned);
+    setLocalXP(prev => prev + xpPerTap);
 
     pendingTapsRef.current.count += 1;
-    pendingTapsRef.current.totalXP += earned;
+    pendingTapsRef.current.totalXP += xpPerTap;
 
     if (window.Telegram?.WebApp?.HapticFeedback) {
       window.Telegram.WebApp.HapticFeedback.impactOccurred("light");
@@ -1185,7 +1118,7 @@ function TapScreen({ lang, dbUser, stats, onRefresh }: { lang: Lang; dbUser: DbU
   };
 
   // Get active artifact image for tap area
-  const tapImage = activeArtifact?.image || "https://images.pexels.com/photos/1678808/pexels-photo-1678808.jpeg?auto=compress&cs=tinysrgb&w=400";
+  const tapImage = activeArtifact?.image || "/images/hero.jpg";
 
   return (
     <div className="space-y-6 pb-32">
@@ -1389,26 +1322,10 @@ function TapScreen({ lang, dbUser, stats, onRefresh }: { lang: Lang; dbUser: DbU
           {showShop && (
             <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
               {/* Bonus summary */}
-              {(totalArtifactBonus > 0 || totalDoubleRewardChance > 0 || autoclickerSpeedMultiplier > 1) && (
-                <div className="mb-2 space-y-1">
-                  {totalArtifactBonus > 0 && (
-                    <div className="px-1 py-2 rounded-xl bg-[#ffd700]/5 border border-[#ffd700]/15 flex items-center justify-between">
-                      <span className="text-[10px] text-white/50">{lang === "ua" ? "Бонус артефактів" : "Artifact bonus"}</span>
-                      <span className="text-[#ffd700] font-black text-sm">+{totalArtifactBonus} XP/{lang === "ua" ? "клік" : "tap"}</span>
-                    </div>
-                  )}
-                  {totalDoubleRewardChance > 0 && (
-                    <div className="px-1 py-2 rounded-xl bg-cyan-500/5 border border-cyan-500/15 flex items-center justify-between">
-                      <span className="text-[10px] text-white/50">{lang === "ua" ? "Шанс подвійної нагороди" : "Double reward chance"}</span>
-                      <span className="text-cyan-400 font-black text-sm">{Math.round(totalDoubleRewardChance * 100)}%</span>
-                    </div>
-                  )}
-                  {autoclickerSpeedMultiplier > 1 && (
-                    <div className="px-1 py-2 rounded-xl bg-blue-500/5 border border-blue-500/15 flex items-center justify-between">
-                      <span className="text-[10px] text-white/50">{lang === "ua" ? "Швидкість автоклікера" : "Autoclicker speed"}</span>
-                      <span className="text-blue-400 font-black text-sm">x{autoclickerSpeedMultiplier}</span>
-                    </div>
-                  )}
+              {totalArtifactBonus > 0 && (
+                <div className="mb-2 px-1 py-2 rounded-xl bg-[#ffd700]/5 border border-[#ffd700]/15 flex items-center justify-between">
+                  <span className="text-[10px] text-white/50">{lang === "ua" ? "Сумарний бонус артефактів" : "Total artifact bonus"}</span>
+                  <span className="text-[#ffd700] font-black text-sm">+{totalArtifactBonus} XP/{lang === "ua" ? "клік" : "tap"}</span>
                 </div>
               )}
               <div className="space-y-2 pt-1">
@@ -1424,7 +1341,7 @@ function TapScreen({ lang, dbUser, stats, onRefresh }: { lang: Lang; dbUser: DbU
                           src={artifact.image}
                           alt={artifact.name[lang as "ua" | "en"]}
                           className="w-full h-full object-cover"
-                          onError={(e) => { (e.target as HTMLImageElement).src = "https://images.pexels.com/photos/1678808/pexels-photo-1678808.jpeg?auto=compress&cs=tinysrgb&w=400"; }}
+                          onError={(e) => { (e.target as HTMLImageElement).src = "/images/lavra.jpg"; }}
                         />
                         {owned && (
                           <div className="absolute inset-0 bg-[#ffd700]/20 flex items-center justify-center">
@@ -1435,15 +1352,6 @@ function TapScreen({ lang, dbUser, stats, onRefresh }: { lang: Lang; dbUser: DbU
                       <div className="flex-1 min-w-0">
                         <div className="text-white font-bold text-xs truncate">{artifact.name[lang as "ua" | "en"]}</div>
                         <div className="text-[#ffd700] text-[10px] font-bold">+{artifact.xpBonus} XP/{lang === "ua" ? "клік" : "click"}</div>
-                        {artifact.effects?.doubleRewardChance && (
-                          <div className="text-cyan-400 text-[9px] font-semibold">{lang === "ua" ? `Шанс x2: ${Math.round(artifact.effects.doubleRewardChance * 100)}%` : `x2 chance: ${Math.round(artifact.effects.doubleRewardChance * 100)}%`}</div>
-                        )}
-                        {artifact.effects?.autoclickerSpeed && (
-                          <div className="text-blue-400 text-[9px] font-semibold">{lang === "ua" ? `Автоклікер x${artifact.effects.autoclickerSpeed}` : `Autoclicker x${artifact.effects.autoclickerSpeed}`}</div>
-                        )}
-                        {artifact.effects?.streakBonus && (
-                          <div className="text-orange-400 text-[9px] font-semibold">{lang === "ua" ? `Бонус серії: +${artifact.effects.streakBonus} XP/день` : `Streak bonus: +${artifact.effects.streakBonus} XP/day`}</div>
-                        )}
                         {owned && (
                           <div className="text-[#4ade80] text-[9px] font-semibold mt-0.5">{lang === "ua" ? "▲ активний бонус" : "▲ bonus active"}</div>
                         )}
@@ -1509,7 +1417,7 @@ export default function App() {
   // Ref always holds the latest dbUser to avoid stale closure in cleanup/intervals
   const dbUserRef = useRef<DbUser | null>(null);
 
-  // Gamification modal state
+  // New gamification states
   const [particles, setParticles] = useState<Particle[]>([]);
   const [showLuckySpin, setShowLuckySpin] = useState(false);
   const [showDailyRewards, setShowDailyRewards] = useState(false);
@@ -1517,24 +1425,9 @@ export default function App() {
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [showGuilds, setShowGuilds] = useState(false);
   const [showLimitedArtifacts, setShowLimitedArtifacts] = useState(false);
-  const [limitedArtifactsData, setLimitedArtifactsData] = useState<Array<{
-    id: string; name: { ua: string; en: string }; description: { ua: string; en: string };
-    image: string; xpBonus: number; rarity: string; availableUntil: string;
-    totalSupply: number; claimedCount: number; costStars: number; isOwned: boolean;
-  }>>([]);
   const [showSeasonPass, setShowSeasonPass] = useState(false);
-  const [freeSpins, setFreeSpins] = useState(0);
-
-  // Real gamification data
-  const [dailyStreak, setDailyStreak] = useState<DailyStreak | null>(null);
-  const [todayClaim, setTodayClaim] = useState<DailyClaim | null>(null);
-  const [unlockedAchievements, setUnlockedAchievements] = useState<string[]>([]);
-  const [allGuilds, setAllGuilds] = useState<GuildWithMembers[]>([]);
-  const [userGuild, setUserGuild] = useState<GuildWithMembers | null>(null);
-  const [leaderboardEntries, setLeaderboardEntries] = useState<{ rank: number; userId: string; telegramId: number; firstName: string; totalXP: number; totalTaps: number; streak: number; }[]>([]);
-  const [activeSeason, setActiveSeason] = useState<Season | null>(null);
-  const [userSeasonProgress, setUserSeasonProgress] = useState<UserSeasonProgress | null>(null);
-  const [seasonTierClaims, setSeasonTierClaims] = useState<SeasonTierClaim[]>([]);
+  const [openingArtifact, setOpeningArtifact] = useState<TapArtifact | null>(null);
+  const [freeSpins, setFreeSpins] = useState(1);
 
   // Initialize sounds on first interaction
   useEffect(() => {
@@ -1575,14 +1468,8 @@ export default function App() {
           sessionIdRef.current = sid;
           sessionStartIsoRef.current = new Date().toISOString();
 
-          const [s, spinData, achKeys] = await Promise.all([
-            museumAPI.getStats(profile.id, lang),
-            museumAPI.getLuckySpins(profile.id),
-            museumAPI.getAchievementKeys(profile.id),
-          ]);
+          const s = await museumAPI.getStats(profile.id, lang);
           setStats(s);
-          setFreeSpins(spinData.freeSpins);
-          setUnlockedAchievements(achKeys);
         }
       } catch (err) {
         console.error("Init error:", err);
@@ -1594,6 +1481,7 @@ export default function App() {
     init();
 
     return () => {
+      // Use refs to access latest values — avoids stale closure
       const sid = sessionIdRef.current;
       const user = dbUserRef.current;
       if (sid && user) {
@@ -1681,14 +1569,50 @@ export default function App() {
         <div className="flex-1 p-4 overflow-y-auto">
           <AnimatePresence mode="wait">
             <motion.div key={screen} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }}>
-              {screen === "home" && <HomeScreen lang={lang} setSelectedArtifact={setSelectedArtifact} setScreen={setScreen} stats={stats} dbUser={dbUser} />}
+              {screen === "home" && <HomeScreen lang={lang} setSelectedArtifact={setSelectedArtifact} setScreen={setScreen} />}
               {screen === "tap" && <TapScreen lang={lang} dbUser={dbUser} stats={stats} onRefresh={refreshStats} />}
               {screen === "museum" && <NewMuseumScreen lang={lang} dbUser={dbUser} onRefresh={refreshStats} />}
               {screen === "timeline" && <TimelineScreen lang={lang} />}
-              {screen === "profile" && <NewProfileScreen lang={lang} setLang={setLang} telegramUser={telegramUser} dbUser={dbUser} stats={stats} onRefresh={refreshStats} sessionStartIso={sessionStartIsoRef.current} onOpenLuckySpin={async () => { triggerHapticFeedback('light'); if (dbUser) { const spinData = await museumAPI.getLuckySpins(dbUser.id); setFreeSpins(spinData.freeSpins); } setShowLuckySpin(true); }} onOpenGuilds={async () => { triggerHapticFeedback('light'); if (dbUser) { const [myGuild, guilds] = await Promise.all([museumAPI.getUserGuild(dbUser.id), museumAPI.getGuilds()]); setUserGuild(myGuild); setAllGuilds(guilds); } setShowGuilds(true); }} onOpenSeasonPass={async () => { triggerHapticFeedback('light'); if (dbUser) { const season = await museumAPI.getActiveSeason(); setActiveSeason(season); if (season) { const progress = await museumAPI.getUserSeasonProgress(dbUser.id, season.id); setUserSeasonProgress(progress); const claims = await museumAPI.getSeasonTierClaims(progress.id); setSeasonTierClaims(claims); } } setShowSeasonPass(true); }} onOpenLimitedArtifacts={async () => { triggerHapticFeedback('light'); if (dbUser) { const data = await museumAPI.getLimitedArtifacts(dbUser.id); setLimitedArtifactsData(data); } setShowLimitedArtifacts(true); }} />}
+              {screen === "profile" && <NewProfileScreen lang={lang} setLang={setLang} telegramUser={telegramUser} dbUser={dbUser} stats={stats} onRefresh={refreshStats} sessionStartIso={sessionStartIsoRef.current} />}
               {screen === "support" && <SupportScreen lang={lang} dbUser={dbUser} onDonated={handleDonated} />}
             </motion.div>
           </AnimatePresence>
+        </div>
+
+        {/* Gamification Quick Access Buttons */}
+        <div className="fixed right-4 bottom-28 z-40 flex flex-col gap-2">
+          <motion.button
+            onClick={() => { triggerHapticFeedback('light'); setShowLuckySpin(true); }}
+            className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-lg"
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+          >
+            <Dices className="w-6 h-6 text-white" />
+          </motion.button>
+          <motion.button
+            onClick={() => { triggerHapticFeedback('light'); setShowDailyRewards(true); }}
+            className="w-12 h-12 rounded-full bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center shadow-lg"
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+          >
+            <Gift className="w-6 h-6 text-white" />
+          </motion.button>
+          <motion.button
+            onClick={() => { triggerHapticFeedback('light'); setShowAchievements(true); }}
+            className="w-12 h-12 rounded-full bg-gradient-to-br from-yellow-500 to-orange-500 flex items-center justify-center shadow-lg"
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+          >
+            <Trophy className="w-6 h-6 text-white" />
+          </motion.button>
+          <motion.button
+            onClick={() => { triggerHapticFeedback('light'); setShowLeaderboard(true); }}
+            className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shadow-lg"
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+          >
+            <TrendingUp className="w-6 h-6 text-white" />
+          </motion.button>
         </div>
 
         {/* Bottom Navigation */}
@@ -1788,20 +1712,21 @@ export default function App() {
             lang={lang}
             canSpin={freeSpins > 0}
             costXP={100}
-            onSpin={async (reward) => {
+            onSpin={(reward) => {
               triggerHapticNotification('success');
               setFreeSpins(prev => Math.max(0, prev - 1));
-              if (dbUser) {
-                await museumAPI.consumeSpin(dbUser.id);
-                await museumAPI.recordSpinReward(dbUser.id, reward.type, reward.value);
-                refreshStats();
+              if (reward.type === 'xp') {
+                if (dbUser) {
+                  museumAPI.addXP(dbUser.id, reward.value).then(refreshStats);
+                }
               }
             }}
-            onPurchaseSpin={async () => {
-              if (dbUser && stats && stats.totalXP >= 100) {
-                await museumAPI.addXP(dbUser.id, -100);
-                setFreeSpins(1);
-                refreshStats();
+            onPurchaseSpin={() => {
+              if (dbUser && (dbUser.total_xp || 0) >= 100) {
+                museumAPI.addXP(dbUser.id, -100).then(() => {
+                  setFreeSpins(prev => prev + 1);
+                  refreshStats();
+                });
               }
             }}
             onClose={() => setShowLuckySpin(false)}
@@ -1813,19 +1738,10 @@ export default function App() {
         {showDailyRewards && dbUser && (
           <DailyRewards
             lang={lang}
-            consecutiveDays={dailyStreak?.current_streak || 0}
-            lastClaimDate={todayClaim?.claim_date || dailyStreak?.last_login_date || null}
-            onClaim={async () => {
-              const result = await museumAPI.claimDailyReward(dbUser.id);
-              if (result.claimed) {
-                const [streak, claim] = await Promise.all([
-                  museumAPI.getDailyStreak(dbUser.id),
-                  museumAPI.getTodayClaim(dbUser.id),
-                ]);
-                setDailyStreak(streak);
-                setTodayClaim(claim);
-                refreshStats();
-              }
+            consecutiveDays={10}
+            lastClaimDate={null}
+            onClaim={(reward) => {
+              museumAPI.addXP(dbUser.id, reward.xp).then(refreshStats);
             }}
             onClose={() => setShowDailyRewards(false)}
           />
@@ -1836,8 +1752,8 @@ export default function App() {
         {showAchievements && (
           <AchievementsModal
             lang={lang}
-            unlockedKeys={unlockedAchievements}
-            stats={{ totalTaps: stats?.totalTaps || 0, totalXP: stats?.totalXP || 0, artifactsCount: stats?.artifactsViewed || 0, referralsCount: 0, streak: dailyStreak?.current_streak || 0 }}
+            unlockedKeys={[]}
+            stats={{ totalTaps: stats?.totalTaps || 0, totalXP: dbUser?.total_xp || 0, artifactsCount: 0, referralsCount: 0, streak: 0 }}
             onClose={() => setShowAchievements(false)}
           />
         )}
@@ -1847,8 +1763,12 @@ export default function App() {
         {showLeaderboard && (
           <Leaderboard
             lang={lang}
-            myRank={leaderboardEntries.find(e => e.telegramId === (telegramUser?.id || 0))?.rank || 0}
-            entries={leaderboardEntries}
+            myRank={1}
+            entries={[
+              { rank: 1, userId: '1', telegramId: 1, firstName: 'User 1', totalXP: 10000, totalTaps: 5000, streak: 7 },
+              { rank: 2, userId: '2', telegramId: 2, firstName: 'User 2', totalXP: 8000, totalTaps: 4000, streak: 5 },
+              { rank: 3, userId: '3', telegramId: 3, firstName: 'User 3', totalXP: 6000, totalTaps: 3000, streak: 3 },
+            ]}
             onClose={() => setShowLeaderboard(false)}
           />
         )}
@@ -1858,77 +1778,13 @@ export default function App() {
         {showGuilds && (
           <Guilds
             lang={lang}
-            currentGuild={userGuild ? {
-              id: String(userGuild.id),
-              name: userGuild.name,
-              description: userGuild.description || '',
-              icon: userGuild.icon,
-              color: userGuild.color,
-              leaderId: String(userGuild.leader_id),
-              totalMembers: userGuild.member_count,
-              maxMembers: userGuild.max_members || 50,
-              totalXP: userGuild.total_xp,
-              weeklyXP: userGuild.weekly_xp,
-              rank: 1,
-              trophies: Math.floor(userGuild.total_xp / 1000),
-              joinType: (userGuild.join_type as 'open' | 'invite' | 'closed') || 'open',
-              members: (userGuild.members || []).map(m => ({
-                userId: String(m.user_id),
-                telegramId: m.user_id,
-                firstName: m.first_name || 'User',
-                photoUrl: m.photo_url || undefined,
-                role: m.role,
-                totalXP: m.total_contribution,
-                weeklyXP: m.weekly_xp,
-              })),
-            } : undefined}
-            guilds={allGuilds.map((g, i) => ({
-              id: String(g.id),
-              name: g.name,
-              description: g.description || '',
-              icon: g.icon,
-              color: g.color,
-              leaderId: String(g.leader_id),
-              totalMembers: g.member_count,
-              maxMembers: g.max_members || 50,
-              totalXP: g.total_xp,
-              weeklyXP: g.weekly_xp,
-              rank: i + 1,
-              trophies: Math.floor(g.total_xp / 1000),
-              joinType: (g.join_type as 'open' | 'invite' | 'closed') || 'open',
-            }))}
-            onJoinGuild={async (guildId) => {
-              if (!dbUser) return;
-              const result = await museumAPI.joinGuild(dbUser.id, parseInt(guildId));
-              if (result.success) {
-                const [myGuild, guilds] = await Promise.all([
-                  museumAPI.getUserGuild(dbUser.id),
-                  museumAPI.getGuilds(),
-                ]);
-                setUserGuild(myGuild);
-                setAllGuilds(guilds);
-              }
-            }}
-            onCreateGuild={async (name, icon, color) => {
-              if (!dbUser) return;
-              const result = await museumAPI.createGuild(dbUser.id, name, icon, color);
-              if (result.success) {
-                const [myGuild, guilds] = await Promise.all([
-                  museumAPI.getUserGuild(dbUser.id),
-                  museumAPI.getGuilds(),
-                ]);
-                setUserGuild(myGuild);
-                setAllGuilds(guilds);
-                refreshStats();
-              }
-            }}
-            onLeaveGuild={async () => {
-              if (!dbUser) return;
-              await museumAPI.leaveGuild(dbUser.id);
-              setUserGuild(null);
-              const guilds = await museumAPI.getGuilds();
-              setAllGuilds(guilds);
-            }}
+            currentGuild={undefined}
+            guilds={[
+              { id: '1', name: 'Козацька Вольниця', description: 'Гільдія вільних людей', icon: '⚔️', color: '#3b82f6', leaderId: '1', totalMembers: 25, maxMembers: 50, totalXP: 50000, weeklyXP: 5000, rank: 1, trophies: 10, joinType: 'open' },
+            ]}
+            onJoinGuild={() => {}}
+            onCreateGuild={() => {}}
+            onLeaveGuild={() => {}}
             onClose={() => setShowGuilds(false)}
           />
         )}
@@ -1938,17 +1794,12 @@ export default function App() {
         {showLimitedArtifacts && dbUser && (
           <LimitedArtifactsModal
             lang={lang}
-            artifacts={limitedArtifactsData}
+            artifacts={[
+              { id: '1', name: { ua: 'Тризуб Слави', en: 'Trident of Glory' }, description: { ua: 'Легендарний артефакт', en: 'Legendary artifact' }, image: '/images/tap-trident-independence.jpg', xpBonus: 1000, rarity: 'legendary', availableUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), totalSupply: 100, claimedCount: 50, costStars: 500 },
+            ]}
             userXP={dbUser.total_xp || 0}
             userStars={0}
-            onClaim={async (artifactId) => {
-              const result = await museumAPI.claimLimitedArtifact(dbUser.id, artifactId);
-              if (result.success) {
-                const data = await museumAPI.getLimitedArtifacts(dbUser.id);
-                setLimitedArtifactsData(data);
-                refreshStats();
-              }
-            }}
+            onClaim={() => {}}
             onClose={() => setShowLimitedArtifacts(false)}
           />
         )}
@@ -1958,33 +1809,10 @@ export default function App() {
         {showSeasonPass && (
           <SeasonPass
             lang={lang}
-            season={activeSeason ? {
-              id: activeSeason.id,
-              name: { ua: activeSeason.name_ua, en: activeSeason.name_en },
-              description: activeSeason.name_en,
-              startDate: activeSeason.start_date,
-              endDate: activeSeason.end_date,
-              totalTiers: activeSeason.total_tiers,
-              rewards: Array.from({ length: activeSeason.total_tiers }, (_, i) => {
-                const tier = i + 1;
-                const claimedFree = seasonTierClaims.some(c => c.tier === tier && c.claim_type === 'free');
-                const claimedPremium = seasonTierClaims.some(c => c.tier === tier && c.claim_type === 'premium');
-                return {
-                  tier,
-                  freeReward: { type: 'xp' as const, value: tier * 50 },
-                  premiumReward: { type: 'xp' as const, value: tier * 100 },
-                  claimedFree,
-                  claimedPremium,
-                };
-              }),
-              hasPremium: userSeasonProgress?.has_premium || false,
-              currentProgress: userSeasonProgress?.current_xp || 0,
-              totalProgress: activeSeason.total_tiers * 1000,
-              premiumCost: 500,
-            } : {
-              id: 'default',
+            season={{
+              id: '1',
               name: { ua: 'Сезон Відродження', en: 'Season of Revival' },
-              description: 'Season of Revival',
+              description: 'First season',
               startDate: new Date().toISOString(),
               endDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
               totalTiers: 10,
@@ -1996,92 +1824,23 @@ export default function App() {
                 claimedPremium: false,
               })),
               hasPremium: false,
-              currentProgress: stats?.totalXP || 0,
-              totalProgress: 10000,
+              currentProgress: 500,
+              totalProgress: 1000,
               premiumCost: 500,
             }}
-            onClaimReward={async (tier, type) => {
-              if (!dbUser || !userSeasonProgress) return;
-              const result = await museumAPI.claimSeasonTier(dbUser.id, userSeasonProgress.id, tier, type);
-              if (result.claimed) {
-                const claims = await museumAPI.getSeasonTierClaims(userSeasonProgress.id);
-                setSeasonTierClaims(claims);
-                refreshStats();
-              }
-            }}
-            onBuyPremium={async () => {
-              if (!dbUser || !activeSeason) return;
-              const costStars = 500;
-
-              try {
-                if (window.Telegram?.WebApp) {
-                  const WebApp = window.Telegram.WebApp;
-                  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-                  const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-                  const invoiceRes = await fetch(`${supabaseUrl}/functions/v1/stars-invoice`, {
-                    method: "POST",
-                    headers: {
-                      "Content-Type": "application/json",
-                      Authorization: `Bearer ${supabaseKey}`,
-                      apikey: supabaseKey,
-                    },
-                    body: JSON.stringify({
-                      title: lang === "ua" ? "Сезон Преміум" : "Season Premium",
-                      description: lang === "ua"
-                        ? `Преміум доступ на сезон — ${costStars} Stars`
-                        : `Premium access for the season — ${costStars} Stars`,
-                      prices: [{ label: "Season Premium", amount: costStars }],
-                      payload: `season_premium_${activeSeason.id}_${dbUser.id}_${Date.now()}`,
-                    }),
-                  });
-
-                  if (!invoiceRes.ok) {
-                    console.error("Invoice creation failed");
-                    return;
-                  }
-
-                  const { invoice_link, error: invError } = await invoiceRes.json();
-                  if (invError || !invoice_link) {
-                    console.error("No invoice link:", invError);
-                    return;
-                  }
-
-                  WebApp.openInvoice(invoice_link, async (status: string) => {
-                    try {
-                      if (status === "paid") {
-                        const result = await museumAPI.buySeasonPremium(dbUser.id, activeSeason.id);
-                        if (result.success) {
-                          const progress = await museumAPI.getUserSeasonProgress(dbUser.id, activeSeason.id);
-                          setUserSeasonProgress(progress);
-                          await museumAPI.createDonation(dbUser.id, costStars, "XTR", `telegram_stars_season_premium_${activeSeason.id}`);
-                          refreshStats();
-                          if (WebApp.HapticFeedback) {
-                            WebApp.HapticFeedback.notificationOccurred("success");
-                          }
-                        }
-                      }
-                    } catch (err) {
-                      console.error("Season premium payment callback error:", err);
-                    }
-                  });
-                } else {
-                  // Test mode
-                  const result = await museumAPI.buySeasonPremium(dbUser.id, activeSeason.id);
-                  if (result.success) {
-                    const progress = await museumAPI.getUserSeasonProgress(dbUser.id, activeSeason.id);
-                    setUserSeasonProgress(progress);
-                  }
-                }
-              } catch (err) {
-                console.error("Buy season premium error:", err);
-              }
-            }}
+            onClaimReward={() => {}}
+            onBuyPremium={() => {}}
             onClose={() => setShowSeasonPass(false)}
           />
         )}
       </AnimatePresence>
 
+      <OpeningAnimation
+        isOpen={openingArtifact !== null}
+        object={openingArtifact ? { id: openingArtifact.key, name: openingArtifact.name, image: openingArtifact.image, rarity: 'epic' } : null}
+        lang={lang}
+        onComplete={() => setOpeningArtifact(null)}
+      />
     </div>
   );
 }
-
