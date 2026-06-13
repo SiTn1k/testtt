@@ -814,3 +814,4 @@ function CollectionScreen({ lang, onBack, progress, onClaim }: { lang: "ua" | "e
     </div>
   );
 }
+
