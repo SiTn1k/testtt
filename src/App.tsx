@@ -875,6 +875,20 @@ function TapScreen({ lang, dbUser, stats, onRefresh }: { lang: Lang; dbUser: DbU
     };
   }, [flushTaps]);
 
+  // Move artifact bonus calculations BEFORE useEffects that use them
+  // This fixes a hoisting issue where autoclickerSpeedMultiplier was used before it was defined
+  const totalArtifactBonus = TAP_ARTIFACTS
+    .filter(a => ownedArtifacts.includes(a.key))
+    .reduce((sum, a) => sum + a.xpBonus, 0);
+
+  const totalDoubleRewardChance = TAP_ARTIFACTS
+    .filter(a => ownedArtifacts.includes(a.key) && a.effects?.doubleRewardChance)
+    .reduce((sum, a) => sum + (a.effects?.doubleRewardChance || 0), 0);
+
+  const autoclickerSpeedMultiplier = TAP_ARTIFACTS
+    .filter(a => ownedArtifacts.includes(a.key) && a.effects?.autoclickerSpeed)
+    .reduce((max, a) => Math.max(max, a.effects?.autoclickerSpeed || 1), 1);
+
   // Autoclicker tick — auto-tap every second when active
   useEffect(() => {
     const acUntil = tapState?.autoclicker_until;
@@ -904,7 +918,7 @@ function TapScreen({ lang, dbUser, stats, onRefresh }: { lang: Lang; dbUser: DbU
     return () => clearInterval(interval);
   }, [tapState?.autoclicker_until]);
 
-  // Autoclicker auto-tap every second
+  // Autoclicker auto-tap
   useEffect(() => {
     const acUntil = tapState?.autoclicker_until;
     if (!acUntil) return;
@@ -915,7 +929,6 @@ function TapScreen({ lang, dbUser, stats, onRefresh }: { lang: Lang; dbUser: DbU
     }, Math.max(200, Math.floor(1000 / autoclickerSpeedMultiplier)));
 
     return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tapState?.autoclicker_until, dbUser, autoclickerSpeedMultiplier]);
 
   // Refresh tap state periodically
@@ -941,19 +954,6 @@ function TapScreen({ lang, dbUser, stats, onRefresh }: { lang: Lang; dbUser: DbU
   }
 
   const levelConfig = TAP_LEVELS.find(l => l.level === (tapState?.tap_level || 1)) || TAP_LEVELS[0];
-
-  // Sum bonuses from ALL owned artifacts (not just active)
-  const totalArtifactBonus = TAP_ARTIFACTS
-    .filter(a => ownedArtifacts.includes(a.key))
-    .reduce((sum, a) => sum + a.xpBonus, 0);
-
-  const totalDoubleRewardChance = TAP_ARTIFACTS
-    .filter(a => ownedArtifacts.includes(a.key) && a.effects?.doubleRewardChance)
-    .reduce((sum, a) => sum + (a.effects?.doubleRewardChance || 0), 0);
-
-  const autoclickerSpeedMultiplier = TAP_ARTIFACTS
-    .filter(a => ownedArtifacts.includes(a.key) && a.effects?.autoclickerSpeed)
-    .reduce((max, a) => Math.max(max, a.effects?.autoclickerSpeed || 1), 1);
 
   const xpPerTap = levelConfig.xpPerTap + totalArtifactBonus;
 
@@ -1685,139 +1685,10 @@ export default function App() {
               {screen === "tap" && <TapScreen lang={lang} dbUser={dbUser} stats={stats} onRefresh={refreshStats} />}
               {screen === "museum" && <NewMuseumScreen lang={lang} dbUser={dbUser} onRefresh={refreshStats} />}
               {screen === "timeline" && <TimelineScreen lang={lang} />}
-              {screen === "profile" && <NewProfileScreen lang={lang} setLang={setLang} telegramUser={telegramUser} dbUser={dbUser} stats={stats} onRefresh={refreshStats} sessionStartIso={sessionStartIsoRef.current} />}
+              {screen === "profile" && <NewProfileScreen lang={lang} setLang={setLang} telegramUser={telegramUser} dbUser={dbUser} stats={stats} onRefresh={refreshStats} sessionStartIso={sessionStartIsoRef.current} onOpenLuckySpin={async () => { triggerHapticFeedback('light'); if (dbUser) { const spinData = await museumAPI.getLuckySpins(dbUser.id); setFreeSpins(spinData.freeSpins); } setShowLuckySpin(true); }} onOpenGuilds={async () => { triggerHapticFeedback('light'); if (dbUser) { const [myGuild, guilds] = await Promise.all([museumAPI.getUserGuild(dbUser.id), museumAPI.getGuilds()]); setUserGuild(myGuild); setAllGuilds(guilds); } setShowGuilds(true); }} onOpenSeasonPass={async () => { triggerHapticFeedback('light'); if (dbUser) { const season = await museumAPI.getActiveSeason(); setActiveSeason(season); if (season) { const progress = await museumAPI.getUserSeasonProgress(dbUser.id, season.id); setUserSeasonProgress(progress); const claims = await museumAPI.getSeasonTierClaims(progress.id); setSeasonTierClaims(claims); } } setShowSeasonPass(true); }} onOpenLimitedArtifacts={async () => { triggerHapticFeedback('light'); if (dbUser) { const data = await museumAPI.getLimitedArtifacts(dbUser.id); setLimitedArtifactsData(data); } setShowLimitedArtifacts(true); }} />}
               {screen === "support" && <SupportScreen lang={lang} dbUser={dbUser} onDonated={handleDonated} />}
             </motion.div>
           </AnimatePresence>
-        </div>
-
-        {/* Gamification Quick Access Buttons */}
-        <div className="fixed right-4 bottom-28 z-40 flex flex-col gap-2">
-          <motion.button
-            onClick={async () => {
-              triggerHapticFeedback('light');
-              if (dbUser) {
-                const spinData = await museumAPI.getLuckySpins(dbUser.id);
-                setFreeSpins(spinData.freeSpins);
-              }
-              setShowLuckySpin(true);
-            }}
-            className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-lg"
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-          >
-            <Dices className="w-6 h-6 text-white" />
-          </motion.button>
-          <motion.button
-            onClick={async () => {
-              triggerHapticFeedback('light');
-              if (dbUser) {
-                const [streak, claim] = await Promise.all([
-                  museumAPI.getDailyStreak(dbUser.id),
-                  museumAPI.getTodayClaim(dbUser.id),
-                ]);
-                setDailyStreak(streak);
-                setTodayClaim(claim);
-              }
-              setShowDailyRewards(true);
-            }}
-            className="w-12 h-12 rounded-full bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center shadow-lg"
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-          >
-            <Gift className="w-6 h-6 text-white" />
-          </motion.button>
-          <motion.button
-            onClick={async () => {
-              triggerHapticFeedback('light');
-              if (dbUser) {
-                const keys = await museumAPI.getAchievementKeys(dbUser.id);
-                setUnlockedAchievements(keys);
-              }
-              setShowAchievements(true);
-            }}
-            className="w-12 h-12 rounded-full bg-gradient-to-br from-yellow-500 to-orange-500 flex items-center justify-center shadow-lg"
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-          >
-            <Trophy className="w-6 h-6 text-white" />
-          </motion.button>
-          <motion.button
-            onClick={async () => {
-              triggerHapticFeedback('light');
-              const entries = await museumAPI.getLeaderboard(20);
-              setLeaderboardEntries(entries.map(e => ({
-                rank: e.rank,
-                userId: String(e.user_id),
-                telegramId: e.user_id,
-                firstName: e.first_name,
-                totalXP: e.total_xp,
-                totalTaps: e.artifacts_viewed,
-                streak: 0,
-              })));
-              setShowLeaderboard(true);
-            }}
-            className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shadow-lg"
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-          >
-            <TrendingUp className="w-6 h-6 text-white" />
-          </motion.button>
-          <motion.button
-            onClick={async () => {
-              triggerHapticFeedback('light');
-              if (dbUser) {
-                const [myGuild, guilds] = await Promise.all([
-                  museumAPI.getUserGuild(dbUser.id),
-                  museumAPI.getGuilds(),
-                ]);
-                setUserGuild(myGuild);
-                setAllGuilds(guilds);
-              }
-              setShowGuilds(true);
-            }}
-            className="w-12 h-12 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg"
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-          >
-            <Users className="w-6 h-6 text-white" />
-          </motion.button>
-          <motion.button
-            onClick={async () => {
-              triggerHapticFeedback('light');
-              if (dbUser) {
-                const season = await museumAPI.getActiveSeason();
-                setActiveSeason(season);
-                if (season) {
-                  const progress = await museumAPI.getUserSeasonProgress(dbUser.id, season.id);
-                  setUserSeasonProgress(progress);
-                  const claims = await museumAPI.getSeasonTierClaims(progress.id);
-                  setSeasonTierClaims(claims);
-                }
-              }
-              setShowSeasonPass(true);
-            }}
-            className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-500 to-yellow-500 flex items-center justify-center shadow-lg"
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-          >
-            <Crown className="w-6 h-6 text-white" />
-          </motion.button>
-          <motion.button
-            onClick={async () => {
-              triggerHapticFeedback('light');
-              if (dbUser) {
-                const data = await museumAPI.getLimitedArtifacts(dbUser.id);
-                setLimitedArtifactsData(data);
-              }
-              setShowLimitedArtifacts(true);
-            }}
-            className="w-12 h-12 rounded-full bg-gradient-to-br from-rose-500 to-red-500 flex items-center justify-center shadow-lg"
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-          >
-            <Clock className="w-6 h-6 text-white" />
-          </motion.button>
         </div>
 
         {/* Bottom Navigation */}
