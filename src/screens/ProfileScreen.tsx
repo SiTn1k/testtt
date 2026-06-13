@@ -4,7 +4,7 @@ import {
   Zap, Star, Trophy, Clock, Landmark, ImageIcon,
   Heart, TrendingUp, Crown, Award, CheckCircle2,
   Gift, Flame, Users, Target, Medal, ChevronRight, ChevronLeft,
-  Send,
+  Send, Dices,
 } from "lucide-react";
 import { GlassCard } from "./GlassCard";
 import {
@@ -55,10 +55,15 @@ type ProfileTab = "main" | "daily" | "referral" | "leaderboard" | "quests" | "co
 
 export function ProfileScreen({
   lang, setLang, telegramUser, dbUser, stats, onRefresh, sessionStartIso,
+  onOpenLuckySpin, onOpenGuilds, onOpenSeasonPass, onOpenLimitedArtifacts,
 }: {
   lang: "ua" | "en"; setLang: (l: "ua" | "en") => void;
   telegramUser: TelegramUserData | null; dbUser: DbUser | null; stats: UserStats | null;
   onRefresh: () => void; sessionStartIso: string | null;
+  onOpenLuckySpin?: () => void;
+  onOpenGuilds?: () => void;
+  onOpenSeasonPass?: () => void;
+  onOpenLimitedArtifacts?: () => void;
 }) {
   const [tab, setTab] = useState<ProfileTab>("main");
   const [liveMinutes, setLiveMinutes] = useState(0);
@@ -277,6 +282,62 @@ export function ProfileScreen({
           </div>
         </GlassCard>
       </motion.div>
+
+      {/* Extra Features Grid */}
+      <div className="grid grid-cols-2 gap-3">
+        <motion.div whileTap={{ scale: 0.97 }}>
+          <GlassCard onClick={onOpenLuckySpin} className="p-4 cursor-pointer hover:border-purple-500/20">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-2xl bg-gradient-to-br from-purple-500/20 to-pink-500/20">
+                <Dices className="w-5 h-5 text-purple-400" />
+              </div>
+              <div className="flex-1">
+                <span className="text-xs font-bold text-white">{lang === "ua" ? "Щасливий спін" : "Lucky Spin"}</span>
+              </div>
+              <ChevronRight className="w-4 h-4 text-white/20" />
+            </div>
+          </GlassCard>
+        </motion.div>
+        <motion.div whileTap={{ scale: 0.97 }}>
+          <GlassCard onClick={onOpenGuilds} className="p-4 cursor-pointer hover:border-violet-500/20">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-2xl bg-gradient-to-br from-violet-500/20 to-purple-600/20">
+                <Users className="w-5 h-5 text-violet-400" />
+              </div>
+              <div className="flex-1">
+                <span className="text-xs font-bold text-white">{lang === "ua" ? "Гільдії" : "Guilds"}</span>
+              </div>
+              <ChevronRight className="w-4 h-4 text-white/20" />
+            </div>
+          </GlassCard>
+        </motion.div>
+        <motion.div whileTap={{ scale: 0.97 }}>
+          <GlassCard onClick={onOpenSeasonPass} className="p-4 cursor-pointer hover:border-amber-500/20">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-2xl bg-gradient-to-br from-amber-500/20 to-yellow-500/20">
+                <Crown className="w-5 h-5 text-amber-400" />
+              </div>
+              <div className="flex-1">
+                <span className="text-xs font-bold text-white">{lang === "ua" ? "Сезонпас" : "Season Pass"}</span>
+              </div>
+              <ChevronRight className="w-4 h-4 text-white/20" />
+            </div>
+          </GlassCard>
+        </motion.div>
+        <motion.div whileTap={{ scale: 0.97 }}>
+          <GlassCard onClick={onOpenLimitedArtifacts} className="p-4 cursor-pointer hover:border-rose-500/20">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-2xl bg-gradient-to-br from-rose-500/20 to-red-500/20">
+                <Clock className="w-5 h-5 text-rose-400" />
+              </div>
+              <div className="flex-1">
+                <span className="text-xs font-bold text-white">{lang === "ua" ? "Лімітки" : "Limited"}</span>
+              </div>
+              <ChevronRight className="w-4 h-4 text-white/20" />
+            </div>
+          </GlassCard>
+        </motion.div>
+      </div>
 
       {/* Telegram Channel */}
       <motion.div
