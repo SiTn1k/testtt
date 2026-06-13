@@ -1,11 +1,10 @@
 import { useState, useEffect } from "react";
-import type { LucideIcon } from "lucide-react";
 import { motion } from "motion/react";
 import {
   Zap, Star, Trophy, Clock, Landmark, ImageIcon,
-  Heart, TrendingUp, Coins, Crown, Award, CheckCircle2,
+  Heart, TrendingUp, Crown, Award, CheckCircle2,
   Gift, Flame, Users, Target, Medal, ChevronRight, ChevronLeft,
-  Swords, Shield, BookOpen, Scroll, Send,
+  Send, Dices,
 } from "lucide-react";
 import { GlassCard } from "./GlassCard";
 import {
@@ -13,6 +12,7 @@ import {
   CATEGORY_META,
   REFERRAL_MILESTONES,
   DAILY_REWARDS,
+  UNIFIED_ACHIEVEMENTS,
   type DailyStreak,
   type DailyClaim,
   type ReferralStats,
@@ -22,6 +22,8 @@ import {
   type MuseumProgress,
   type ArtifactCategory,
   type UserStats,
+  type DailyQuest,
+  type DailyQuestProgress,
 } from "../lib/api";
 
 interface TelegramUserData {
@@ -35,39 +37,33 @@ interface TelegramUserData {
 }
 
 interface DbUser {
-  id: string;
+  id: number;
   telegram_id: number;
-  xp: number;
-  level: number;
+  username?: string | null;
+  first_name?: string;
+  total_xp?: number;
 }
 
-const ALL_ACHIEVEMENTS: Array<{ key: string; icon: LucideIcon; ua: string; en: string; color: string }> = [
-  { key: "FIRST_VISIT", icon: Award, ua: "Перший візит", en: "First Visit", color: "#ffd700" },
-  { key: "FIRST_ARTIFACT_VIEW", icon: Landmark, ua: "Перший артефакт", en: "First Artifact", color: "#3b82f6" },
-  { key: "ONE_HOUR", icon: Clock, ua: "Година в музеї", en: "One Hour", color: "#0057b7" },
-  { key: "TEN_ARTIFACTS", icon: Landmark, ua: "10 артефактів", en: "10 Artifacts", color: "#ffd700" },
-  { key: "ALL_ARTIFACTS", icon: Crown, ua: "Всі артефакти", en: "All Artifacts", color: "#ffd700" },
-  { key: "FIRST_ARTICLE", icon: BookOpen, ua: "Перша стаття", en: "First Article", color: "#a855f7" },
-  { key: "FIRST_REFERRAL", icon: Users, ua: "Перший реферал", en: "First Referral", color: "#22c55e" },
-  { key: "FIRST_DONATION", icon: Heart, ua: "Перший донат", en: "First Donation", color: "#e85d04" },
-  { key: "DONATED_100", icon: Coins, ua: "Меценат 100", en: "Patron 100", color: "#0057b7" },
-  { key: "DONATED_1000", icon: Crown, ua: "Меценат 1000", en: "Patron 1000", color: "#ffd700" },
-  { key: "STREAK_7", icon: Flame, ua: "Серія 7 днів", en: "7-Day Streak", color: "#ef4444" },
-  { key: "STREAK_30", icon: Flame, ua: "Серія 30 днів", en: "30-Day Streak", color: "#ffd700" },
-  { key: "COLLECTION_KYIVAN_RUS", icon: Crown, ua: "Колекція: Київська Русь", en: "Collection: Kyivan Rus", color: "#ffd700" },
-  { key: "COLLECTION_COSSACK_ERA", icon: Swords, ua: "Колекція: Козацька Доба", en: "Collection: Cossack Era", color: "#c0392b" },
-  { key: "COLLECTION_UNR", icon: Scroll, ua: "Колекція: УНР", en: "Collection: UNR", color: "#0057b7" },
-  { key: "COLLECTION_MODERN_UKRAINE", icon: Shield, ua: "Колекція: Сучасна", en: "Collection: Modern", color: "#22c55e" },
-];
+const RARITY_COLOR: Record<string, string> = {
+  common: "#4ade80",
+  rare: "#22d3ee",
+  epic: "#a855f7",
+  legendary: "#ffd700",
+};
 
 type ProfileTab = "main" | "daily" | "referral" | "leaderboard" | "quests" | "collection";
 
 export function ProfileScreen({
   lang, setLang, telegramUser, dbUser, stats, onRefresh, sessionStartIso,
+  onOpenLuckySpin, onOpenGuilds, onOpenSeasonPass, onOpenLimitedArtifacts,
 }: {
   lang: "ua" | "en"; setLang: (l: "ua" | "en") => void;
   telegramUser: TelegramUserData | null; dbUser: DbUser | null; stats: UserStats | null;
   onRefresh: () => void; sessionStartIso: string | null;
+  onOpenLuckySpin?: () => void;
+  onOpenGuilds?: () => void;
+  onOpenSeasonPass?: () => void;
+  onOpenLimitedArtifacts?: () => void;
 }) {
   const [tab, setTab] = useState<ProfileTab>("main");
   const [liveMinutes, setLiveMinutes] = useState(0);
@@ -79,6 +75,8 @@ export function ProfileScreen({
   const [quests, setQuests] = useState<WeeklyQuest[]>([]);
   const [questProgress, setQuestProgress] = useState<QuestProgress[]>([]);
   const [museumProgress, setMuseumProgress] = useState<MuseumProgress[]>([]);
+  const [dailyQuests, setDailyQuests] = useState<DailyQuest[]>([]);
+  const [dailyQuestProgress, setDailyQuestProgress] = useState<DailyQuestProgress[]>([]);
 
   useEffect(() => {
     const calc = () => {
@@ -105,6 +103,8 @@ export function ProfileScreen({
     if (tab === "quests") {
       museumAPI.getWeeklyQuests().then(setQuests);
       museumAPI.getQuestProgress(dbUser.id).then(setQuestProgress);
+      museumAPI.getDailyQuests().then(setDailyQuests);
+      museumAPI.getDailyQuestProgress(dbUser.id).then(setDailyQuestProgress);
     }
     if (tab === "collection") {
       museumAPI.getMuseumProgress(dbUser.id).then(setMuseumProgress);
@@ -140,6 +140,15 @@ export function ProfileScreen({
     }
   };
 
+  const handleClaimDailyQuest = async (questId: number) => {
+    if (!dbUser) return;
+    const result = await museumAPI.claimDailyQuestReward(dbUser.id, questId);
+    if (result.claimed) {
+      museumAPI.getDailyQuestProgress(dbUser.id).then(setDailyQuestProgress);
+      onRefresh();
+    }
+  };
+
   const handleClaimCollection = async (category: ArtifactCategory) => {
     if (!dbUser) return;
     const result = await museumAPI.claimCollectionReward(dbUser.id, category);
@@ -160,14 +169,14 @@ export function ProfileScreen({
     return <LeaderboardScreen lang={lang} onBack={() => setTab("main")} entries={leaderboard} dbUser={dbUser} />;
   }
   if (tab === "quests") {
-    return <QuestsScreen lang={lang} onBack={() => setTab("main")} quests={quests} progress={questProgress} onClaim={handleClaimQuest} />;
+    return <QuestsScreen lang={lang} onBack={() => setTab("main")} quests={quests} progress={questProgress} dailyQuests={dailyQuests} dailyProgress={dailyQuestProgress} onClaimWeekly={handleClaimQuest} onClaimDaily={handleClaimDailyQuest} />;
   }
   if (tab === "collection") {
     return <CollectionScreen lang={lang} onBack={() => setTab("main")} progress={museumProgress} onClaim={handleClaimCollection} />;
   }
 
   // Main profile
-  const avatarUrl = telegramUser?.photo_url || "/images/avatar-default.jpg";
+  const avatarUrl = telegramUser?.photo_url || "https://images.pexels.com/photos/771742/pexels-photo-771742.jpeg?auto=compress&cs=tinysrgb&w=200";
 
   return (
     <div className="space-y-6 pb-24">
@@ -274,6 +283,62 @@ export function ProfileScreen({
         </GlassCard>
       </motion.div>
 
+      {/* Extra Features Grid */}
+      <div className="grid grid-cols-2 gap-3">
+        <motion.div whileTap={{ scale: 0.97 }}>
+          <GlassCard onClick={onOpenLuckySpin} className="p-4 cursor-pointer hover:border-purple-500/20">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-2xl bg-gradient-to-br from-purple-500/20 to-pink-500/20">
+                <Dices className="w-5 h-5 text-purple-400" />
+              </div>
+              <div className="flex-1">
+                <span className="text-xs font-bold text-white">{lang === "ua" ? "Щасливий спін" : "Lucky Spin"}</span>
+              </div>
+              <ChevronRight className="w-4 h-4 text-white/20" />
+            </div>
+          </GlassCard>
+        </motion.div>
+        <motion.div whileTap={{ scale: 0.97 }}>
+          <GlassCard onClick={onOpenGuilds} className="p-4 cursor-pointer hover:border-violet-500/20">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-2xl bg-gradient-to-br from-violet-500/20 to-purple-600/20">
+                <Users className="w-5 h-5 text-violet-400" />
+              </div>
+              <div className="flex-1">
+                <span className="text-xs font-bold text-white">{lang === "ua" ? "Гільдії" : "Guilds"}</span>
+              </div>
+              <ChevronRight className="w-4 h-4 text-white/20" />
+            </div>
+          </GlassCard>
+        </motion.div>
+        <motion.div whileTap={{ scale: 0.97 }}>
+          <GlassCard onClick={onOpenSeasonPass} className="p-4 cursor-pointer hover:border-amber-500/20">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-2xl bg-gradient-to-br from-amber-500/20 to-yellow-500/20">
+                <Crown className="w-5 h-5 text-amber-400" />
+              </div>
+              <div className="flex-1">
+                <span className="text-xs font-bold text-white">{lang === "ua" ? "Сезонпас" : "Season Pass"}</span>
+              </div>
+              <ChevronRight className="w-4 h-4 text-white/20" />
+            </div>
+          </GlassCard>
+        </motion.div>
+        <motion.div whileTap={{ scale: 0.97 }}>
+          <GlassCard onClick={onOpenLimitedArtifacts} className="p-4 cursor-pointer hover:border-rose-500/20">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-2xl bg-gradient-to-br from-rose-500/20 to-red-500/20">
+                <Clock className="w-5 h-5 text-rose-400" />
+              </div>
+              <div className="flex-1">
+                <span className="text-xs font-bold text-white">{lang === "ua" ? "Лімітки" : "Limited"}</span>
+              </div>
+              <ChevronRight className="w-4 h-4 text-white/20" />
+            </div>
+          </GlassCard>
+        </motion.div>
+      </div>
+
       {/* Telegram Channel */}
       <motion.div
         whileTap={{ scale: 0.95 }}
@@ -311,16 +376,17 @@ export function ProfileScreen({
       <div className="space-y-3">
         <div className="flex items-center justify-between px-1">
           <h3 className="text-sm font-bold text-white uppercase tracking-wider">{lang === "ua" ? "Досягнення" : "Achievements"}</h3>
-          <span className="text-[10px] text-[#ffd700] font-bold">{stats?.achievements?.length || 0}/{ALL_ACHIEVEMENTS.length}</span>
+          <span className="text-[10px] text-[#ffd700] font-bold">{stats?.achievements?.length || 0}/{UNIFIED_ACHIEVEMENTS.length}</span>
         </div>
         <div className="flex gap-3 overflow-x-auto pb-1 no-scrollbar">
-          {ALL_ACHIEVEMENTS.map((ach) => {
+          {UNIFIED_ACHIEVEMENTS.map((ach) => {
             const unlocked = stats?.achievements?.includes(ach.key);
+            const color = RARITY_COLOR[ach.rarity] || "#4ade80";
             return (
               <motion.div key={ach.key} whileTap={{ scale: 0.95 }} className="flex-shrink-0">
                 <GlassCard className={`p-3 flex flex-col items-center gap-2 w-28 ${unlocked ? "" : "opacity-40"}`}>
-                  <div className="p-2.5 rounded-2xl bg-white/5" style={{ color: unlocked ? ach.color : "#555" }}>
-                    <ach.icon className="w-6 h-6" />
+                  <div className="p-2.5 rounded-2xl bg-white/5" style={{ color: unlocked ? color : "#555" }}>
+                    <Award className="w-6 h-6" />
                   </div>
                   <span className="text-[10px] font-semibold text-white/80 text-center">{ach[lang]}</span>
                   {unlocked && <CheckCircle2 className="w-3 h-3 text-green-400" />}
@@ -580,13 +646,62 @@ function LeaderboardScreen({ lang, onBack, entries, dbUser }: { lang: "ua" | "en
 
 // ── Quests Sub-screen ────────────────────────────────────────────────────────────
 
-function QuestsScreen({ lang, onBack, quests, progress, onClaim }: { lang: "ua" | "en"; onBack: () => void; quests: WeeklyQuest[]; progress: QuestProgress[]; onClaim: (questId: string) => void }) {
-  const t: { title: string; progress: string; claim: string; claimed: string; complete: string; reward: string } = {
-    ua: { title: "Тижневі квести", progress: "Прогрес", claim: "Забрати", claimed: "Отримано", complete: "Виконано", reward: "Нагорода" },
-    en: { title: "Weekly Quests", progress: "Progress", claim: "Claim", claimed: "Claimed", complete: "Complete", reward: "Reward" },
+function QuestsScreen({ lang, onBack, quests, progress, dailyQuests, dailyProgress, onClaimWeekly, onClaimDaily }: {
+  lang: "ua" | "en";
+  onBack: () => void;
+  quests: WeeklyQuest[];
+  progress: QuestProgress[];
+  dailyQuests: DailyQuest[];
+  dailyProgress: DailyQuestProgress[];
+  onClaimWeekly: (questId: string) => void;
+  onClaimDaily: (questId: number) => void;
+}) {
+  const t: { weeklyTitle: string; dailyTitle: string; progress: string; claim: string; claimed: string; reward: string } = {
+    ua: { weeklyTitle: "Тижневі квести", dailyTitle: "Щоденні квести", progress: "Прогрес", claim: "Забрати", claimed: "Отримано", reward: "Нагорода" },
+    en: { weeklyTitle: "Weekly Quests", dailyTitle: "Daily Quests", progress: "Progress", claim: "Claim", claimed: "Claimed", reward: "Reward" },
   }[lang as "ua" | "en"];
 
   const getQuestProgress = (questId: string) => progress.find((p: QuestProgress) => p.quest_id === questId);
+  const getDailyProgress = (questId: number) => dailyProgress.find((p: DailyQuestProgress) => p.daily_quest_id === questId);
+
+  const renderQuest = (id: string | number, title: string, currentCount: number, targetCount: number, rewardXP: number, completed: boolean, claimed: boolean, onClaim: () => void, accentColor: string) => {
+    const percent = Math.min(100, (currentCount / targetCount) * 100);
+    return (
+      <GlassCard key={id} className={`p-4 ${completed ? "border-green-500/20" : ""}`}>
+        <div className="flex items-start gap-4">
+          <div className={`p-3 rounded-2xl ${completed ? "bg-green-500/20" : "bg-white/5"}`}>
+            <Target className={`w-5 h-5 ${completed ? "text-green-400" : "text-white/40"}`} />
+          </div>
+          <div className="flex-1 space-y-2">
+            <h3 className="text-sm font-bold text-white">{title}</h3>
+            <div className="flex items-center gap-2 text-[10px] text-white/40">
+              <span>{t.progress}: {currentCount}/{targetCount}</span>
+              <span>&bull;</span>
+              <span>{t.reward}: +{rewardXP} XP</span>
+            </div>
+            <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${percent}%` }}
+                className={`h-full bg-gradient-to-r ${accentColor}`}
+              />
+            </div>
+            {completed && !claimed && (
+              <button onClick={onClaim} className="mt-1 text-[10px] font-bold text-[#ffd700] uppercase tracking-widest">
+                {t.claim} +{rewardXP} XP
+              </button>
+            )}
+            {claimed && (
+              <div className="mt-1 flex items-center gap-1 text-green-400">
+                <CheckCircle2 className="w-3 h-3" />
+                <span className="text-[10px] font-bold">{t.claimed}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </GlassCard>
+    );
+  };
 
   return (
     <div className="space-y-6 pb-24">
@@ -594,54 +709,35 @@ function QuestsScreen({ lang, onBack, quests, progress, onClaim }: { lang: "ua" 
         <button onClick={onBack} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white">
           <ChevronLeft className="w-5 h-5" />
         </button>
-        <h1 className="text-2xl font-bold text-white">{t.title}</h1>
+        <h1 className="text-2xl font-bold text-white">{lang === "ua" ? "Квести" : "Quests"}</h1>
       </div>
 
+      {/* Daily Quests */}
       <div className="space-y-3">
+        <h2 className="text-sm font-bold text-cyan-400 uppercase tracking-wider">{t.dailyTitle}</h2>
+        {dailyQuests.map((dq: DailyQuest) => {
+          const dp = getDailyProgress(dq.id);
+          return renderQuest(
+            dq.id, lang === "ua" ? dq.title_ua : dq.title_en,
+            dp?.current_count || 0, dq.target_count, dq.reward_xp,
+            dp?.completed || false, dp?.claimed || false,
+            () => onClaimDaily(dq.id),
+            "from-cyan-500 to-blue-500"
+          );
+        })}
+      </div>
+
+      {/* Weekly Quests */}
+      <div className="space-y-3">
+        <h2 className="text-sm font-bold text-[#ffd700] uppercase tracking-wider">{t.weeklyTitle}</h2>
         {quests.map((quest: WeeklyQuest) => {
           const qp = getQuestProgress(quest.id);
-          const currentCount = qp?.current_count || 0;
-          const completed = qp?.completed || false;
-          const claimed = qp?.claimed || false;
-          const percent = Math.min(100, (currentCount / quest.target_count) * 100);
-
-          return (
-            <GlassCard key={quest.id} className={`p-4 ${completed ? "border-green-500/20" : ""}`}>
-              <div className="flex items-start gap-4">
-                <div className={`p-3 rounded-2xl ${completed ? "bg-green-500/20" : "bg-white/5"}`}>
-                  <Target className={`w-5 h-5 ${completed ? "text-green-400" : "text-white/40"}`} />
-                </div>
-                <div className="flex-1 space-y-2">
-                  <h3 className="text-sm font-bold text-white">{lang === "ua" ? quest.title_ua : quest.title_en}</h3>
-                  <div className="flex items-center gap-2 text-[10px] text-white/40">
-                    <span>{t.progress}: {currentCount}/{quest.target_count}</span>
-                    <span>&bull;</span>
-                    <span>{t.reward}: +{quest.reward_xp} XP</span>
-                  </div>
-                  <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${percent}%` }}
-                      className="h-full bg-gradient-to-r from-[#0057b7] to-[#ffd700]"
-                    />
-                  </div>
-                  {completed && !claimed && (
-                    <button
-                      onClick={() => onClaim(quest.id)}
-                      className="mt-1 text-[10px] font-bold text-[#ffd700] uppercase tracking-widest"
-                    >
-                      {t.claim} +{quest.reward_xp} XP
-                    </button>
-                  )}
-                  {claimed && (
-                    <div className="mt-1 flex items-center gap-1 text-green-400">
-                      <CheckCircle2 className="w-3 h-3" />
-                      <span className="text-[10px] font-bold">{t.claimed}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </GlassCard>
+          return renderQuest(
+            quest.id, lang === "ua" ? quest.title_ua : quest.title_en,
+            qp?.current_count || 0, quest.target_count, quest.reward_xp,
+            qp?.completed || false, qp?.claimed || false,
+            () => onClaimWeekly(quest.id),
+            "from-[#0057b7] to-[#ffd700]"
           );
         })}
       </div>
